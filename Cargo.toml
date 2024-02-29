@@ -1,0 +1,5 @@
+[workspace]
+resolver = "2"
+members = ["binding-mlua", "binding-magnus", "librgss", "rsgss"]
+
+[workspace.dependencies]
