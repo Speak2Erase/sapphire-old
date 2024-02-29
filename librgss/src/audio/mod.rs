@@ -14,3 +14,19 @@
 //
 // You should have received a copy of the GNU General Public License
 // along with rsgss.  If not, see <http://www.gnu.org/licenses/>.
+
+pub struct Audio {
+    stream: rodio::OutputStream,
+    stream_handle: rodio::OutputStreamHandle,
+}
+
+impl Audio {
+    pub fn new() -> color_eyre::Result<Self> {
+        let (stream, stream_handle) = rodio::OutputStream::try_default()?;
+
+        Ok(Self {
+            stream,
+            stream_handle,
+        })
+    }
+}

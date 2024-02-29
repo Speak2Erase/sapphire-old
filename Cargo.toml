@@ -3,10 +3,20 @@ resolver = "2"
 members = ["binding-mlua", "binding-magnus", "librgss", "sapphire"]
 
 [workspace.dependencies]
+# Input
 winit = "0.29.11"
+gilrs = "0.10.4"
+# Graphics
 wgpu = "0.19.1"
-
+# Asset loading
+image = "0.24.9"
+# Audio
+rodio = "0.17.3"
+# Concurrency
 parking_lot = "0.12.1"
 arc-swap = "1.6.0"
+
+# Error handling
+color-eyre = "0.6.2"
 
 [workspace.lints]

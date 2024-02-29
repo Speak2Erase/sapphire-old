@@ -4,9 +4,12 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
+librgss = { version = "0.1.0", path = "../librgss" }
 rsgss-binding-magnus = { version = "0.1.0", path = "../binding-magnus", features = [
   "embed",
 ], optional = true }
+
+color-eyre.workspace = true
 
 [features]
 magnus = ["rsgss-binding-magnus"]

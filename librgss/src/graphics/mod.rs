@@ -14,3 +14,17 @@
 //
 // You should have received a copy of the GNU General Public License
 // along with rsgss.  If not, see <http://www.gnu.org/licenses/>.
+
+use crate::event_loop::EventLoop;
+
+pub struct Graphics {
+    window: winit::window::Window,
+}
+
+impl Graphics {
+    pub fn new(event_loop: &EventLoop) -> color_eyre::Result<Self> {
+        let window = winit::window::Window::new(&event_loop.event_loop)?;
+
+        Ok(Self { window })
+    }
+}
