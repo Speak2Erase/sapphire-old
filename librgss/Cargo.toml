@@ -10,3 +10,11 @@ winit.workspace = true
 image.workspace = true
 
 color-eyre.workspace = true
+
+[features]
+rgss1 = []
+rgss2 = []
+rgss3 = []
+
+# not sure about this one
+rgss4 = []

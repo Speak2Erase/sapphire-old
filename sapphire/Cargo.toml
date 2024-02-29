@@ -9,6 +9,8 @@ rsgss-binding-magnus = { version = "0.1.0", path = "../binding-magnus", features
   "embed",
 ], optional = true }
 
+pollster = "0.3.0"
+
 color-eyre.workspace = true
 
 [features]
