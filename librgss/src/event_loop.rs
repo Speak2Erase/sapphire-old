@@ -20,24 +20,37 @@ use std::sync::mpsc::{Receiver, Sender};
 use winit::event::{Event, WindowEvent};
 
 pub struct EventLoop {
-    pub(crate) event_loop: winit::event_loop::EventLoop<()>,
-    pub(crate) event_sender: Sender<Event<()>>,
+    pub(crate) event_loop: winit::event_loop::EventLoop<UserEvent>,
+    pub(crate) event_sender: Sender<Event<UserEvent>>,
 }
 
 pub struct Events {
-    pub(crate) event_reciever: Receiver<Event<()>>,
+    pub(crate) event_reciever: Receiver<Event<UserEvent>>,
+    pub(crate) event_proxy: winit::event_loop::EventLoopProxy<UserEvent>,
+}
+
+pub(crate) enum UserEvent {
+    ExitEventLoop,
+    // TODO is this the right way to implement this?
+    ExitBindingThread,
 }
 
 impl EventLoop {
     pub fn new() -> color_eyre::Result<(Self, Events)> {
-        let event_loop = winit::event_loop::EventLoop::new()?;
+        let event_loop = winit::event_loop::EventLoopBuilder::with_user_event().build()?;
+        let event_proxy = event_loop.create_proxy();
+
         let (event_sender, event_reciever) = std::sync::mpsc::channel();
 
         let event_loop = Self {
             event_loop,
             event_sender,
         };
-        let events = Events { event_reciever };
+
+        let events = Events {
+            event_reciever,
+            event_proxy,
+        };
 
         Ok((event_loop, events))
     }
@@ -47,18 +60,24 @@ impl EventLoop {
             // rendering is not driven by event loop but is instead driven by Graphics::update, so we only need to wait on events
             target.set_control_flow(winit::event_loop::ControlFlow::Wait);
 
-            if matches!(
-                event,
-                Event::WindowEvent {
-                    event: WindowEvent::CloseRequested,
-                    ..
-                }
-            ) {
-                target.exit();
+            match &event {
+                Event::WindowEvent { event, .. } => match event {
+                    WindowEvent::CloseRequested => target.exit(),
+                    WindowEvent::Destroyed => {
+                        eprintln!("warning: window has been destroyed. exiting");
+                        target.exit()
+                    }
+                    _ => {}
+                },
+                Event::UserEvent(event) => match event {
+                    UserEvent::ExitEventLoop => target.exit(),
+                    UserEvent::ExitBindingThread => {}
+                },
+                _ => {}
             }
 
             if self.event_sender.send(event).is_err() {
-                eprintln!("Event loop sender error (implies reciever was dropped), exiting");
+                eprintln!("event loop sender error (implies reciever was dropped), exiting");
                 target.exit();
             }
         })?;

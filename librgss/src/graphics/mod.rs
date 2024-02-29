@@ -40,6 +40,7 @@ impl Graphics {
     pub async fn new(event_loop: &EventLoop) -> color_eyre::Result<Self> {
         let window = winit::window::WindowBuilder::new()
             .with_inner_size(winit::dpi::PhysicalSize::new(640, 480))
+            .with_resizable(false)
             .build(&event_loop.event_loop)
             .map(Arc::new)?;
         let graphics_state = GraphicsState::new(window.clone()).await?;

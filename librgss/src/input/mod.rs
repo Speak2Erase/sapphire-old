@@ -14,3 +14,15 @@
 //
 // You should have received a copy of the GNU General Public License
 // along with rsgss.  If not, see <http://www.gnu.org/licenses/>.
+
+use crate::Events;
+
+pub struct Input {
+    events: Events,
+}
+
+impl Input {
+    pub fn new(events: Events) -> Self {
+        Self { events }
+    }
+}

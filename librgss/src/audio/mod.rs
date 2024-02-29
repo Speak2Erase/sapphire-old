@@ -20,6 +20,9 @@ pub struct Audio {
     stream_handle: rodio::OutputStreamHandle,
 }
 
+// FIXME this is probably not correct
+unsafe impl Send for Audio {}
+
 impl Audio {
     pub fn new() -> color_eyre::Result<Self> {
         let (stream, stream_handle) = rodio::OutputStream::try_default()?;
