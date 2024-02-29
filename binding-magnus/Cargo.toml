@@ -4,3 +4,8 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
+magnus = "0.6.2"
+
+[features]
+embed = ["magnus/embed"]
+static = ["magnus/ruby-static"]

@@ -1,5 +1,12 @@
 [workspace]
 resolver = "2"
-members = ["binding-mlua", "binding-magnus", "librgss", "rsgss"]
+members = ["binding-mlua", "binding-magnus", "librgss", "sapphire"]
 
 [workspace.dependencies]
+winit = "0.29.11"
+wgpu = "0.19.1"
+
+parking_lot = "0.12.1"
+arc-swap = "1.6.0"
+
+[workspace.lints]

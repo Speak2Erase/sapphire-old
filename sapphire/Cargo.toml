@@ -1,0 +1,15 @@
+[package]
+name = "sapphire"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+rsgss-binding-magnus = { version = "0.1.0", path = "../binding-magnus", features = [
+  "embed",
+], optional = true }
+
+[features]
+magnus = ["rsgss-binding-magnus"]
+mlua = []
+
+default = ["magnus"]
