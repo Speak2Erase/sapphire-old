@@ -5,6 +5,15 @@ use scripts::Script;
 
 mod error;
 
+mod audio;
+
+mod bitmap;
+mod font;
+mod graphics;
+mod plane;
+mod sprite;
+mod tilemap;
+
 mod input;
 
 #[cfg(feature = "modshot")]
@@ -71,14 +80,19 @@ fn init_bindings(
          $LOAD_PATH.unshift(File.join(Dir.pwd, 'lib', 'ruby', RUBY_PLATFORM))\n",
     )?;
 
+    audio::bind(ruby, audio)?;
+
+    graphics::bind(ruby, graphics)?;
+    bitmap::bind(ruby)?;
+    sprite::bind(ruby)?;
+    font::bind(ruby)?;
+    plane::bind(ruby)?;
+    tilemap::bind(ruby)?;
+
     input::bind(ruby, input)?;
 
     #[cfg(feature = "modshot")]
     oneshot::bind(ruby)?;
-
-    // TODO
-    std::mem::forget(audio);
-    std::mem::forget(graphics);
 
     Ok(())
 }

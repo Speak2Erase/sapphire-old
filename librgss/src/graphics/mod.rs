@@ -15,13 +15,26 @@
 // You should have received a copy of the GNU General Public License
 // along with rsgss.  If not, see <http://www.gnu.org/licenses/>.
 
+use color_eyre::eyre::OptionExt;
 use std::sync::Arc;
-
 use winit::window::Window;
 
-use color_eyre::eyre::OptionExt;
-
 use crate::event_loop::EventLoop;
+
+mod bitmap;
+pub use bitmap::Bitmap;
+
+mod sprite;
+pub use sprite::Sprite;
+
+mod plane;
+pub use plane::Plane;
+
+mod tilemap;
+pub use tilemap::Tilemap;
+
+mod font;
+pub use font::Font;
 
 pub struct Graphics {
     window: Arc<Window>,
