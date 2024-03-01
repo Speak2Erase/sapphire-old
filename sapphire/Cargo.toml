@@ -17,4 +17,7 @@ color-eyre.workspace = true
 magnus = ["rsgss-binding-magnus"]
 mlua = []
 
-default = ["magnus"]
+default = ["magnus", "modshot"] # testing against modshot for now
+
+modshot = ["rsgss-binding-magnus/modshot"]
+mkxp-z = ["rsgss-binding-magnus/mkxp-z"]
