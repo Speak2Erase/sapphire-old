@@ -15,7 +15,7 @@
 // You should have received a copy of the GNU General Public License
 // along with sapphire.  If not, see <http://www.gnu.org/licenses/>.
 
-use std::sync::mpsc::{Receiver, Sender};
+use crossbeam::channel::{Receiver, Sender};
 
 use winit::event::{Event, WindowEvent};
 
@@ -31,14 +31,6 @@ pub struct Events {
 
 pub(crate) enum UserEvent {
     ExitEventLoop,
-    // TODO is this the right way to implement this?
-    ExitBindingThread,
-}
-
-impl Drop for Events {
-    fn drop(&mut self) {
-        let _ = self.event_proxy.send_event(UserEvent::ExitEventLoop);
-    }
 }
 
 impl EventLoop {
@@ -46,7 +38,7 @@ impl EventLoop {
         let event_loop = winit::event_loop::EventLoopBuilder::with_user_event().build()?;
         let event_proxy = event_loop.create_proxy();
 
-        let (event_sender, event_reciever) = std::sync::mpsc::channel();
+        let (event_sender, event_reciever) = crossbeam::channel::unbounded();
 
         let event_loop = Self {
             event_loop,
@@ -76,9 +68,13 @@ impl EventLoop {
                     _ => {}
                 },
                 Event::UserEvent(event) => match event {
-                    UserEvent::ExitEventLoop => target.exit(),
-                    UserEvent::ExitBindingThread => {}
+                    UserEvent::ExitEventLoop => {
+                        eprintln!("event loop exit has been requested, exiting");
+                        target.exit()
+                    }
                 },
+                // we don't actually need to let the binding know we're about to exit!
+                // winit sends a AboutToExit event which we know is the *last* event emitted.
                 _ => {}
             }
 

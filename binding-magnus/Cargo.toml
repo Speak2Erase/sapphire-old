@@ -14,6 +14,8 @@ alox-48 = "0.4.0"
 serde = "1.0.197"
 flate2 = "1.0"
 
+parking_lot.workspace = true
+
 [features]
 embed = ["magnus/embed"]
 static = ["magnus/ruby-static"]

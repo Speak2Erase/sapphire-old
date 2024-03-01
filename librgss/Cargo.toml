@@ -11,6 +11,9 @@ image.workspace = true
 
 color-eyre.workspace = true
 
+crossbeam.workspace = true
+parking_lot.workspace = true
+
 [features]
 rgss1 = []
 rgss2 = []
