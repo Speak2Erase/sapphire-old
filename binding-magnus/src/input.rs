@@ -15,6 +15,8 @@
 // You should have received a copy of the GNU General Public License
 // along with sapphire.  If not, see <http://www.gnu.org/licenses/>.
 
+use magnus::function;
+
 use parking_lot::RwLock;
 use std::sync::OnceLock;
 
@@ -27,6 +29,17 @@ pub fn get_input() -> &'static RwLock<librgss::Input> {
         .expect("input static not set! please report how you encountered this crash")
 }
 
+fn update() -> Result<(), magnus::Error> {
+    let mut input = get_input().write();
+    input.update();
+
+    if input.exited() {
+        Err(magnus::Error::new(magnus::exception::system_exit(), " "))
+    } else {
+        Ok(())
+    }
+}
+
 pub fn bind(ruby: &magnus::Ruby, input: librgss::Input) -> Result<(), magnus::Error> {
     let module = ruby.define_module("Input")?;
 
@@ -34,6 +47,8 @@ pub fn bind(ruby: &magnus::Ruby, input: librgss::Input) -> Result<(), magnus::Er
     if INPUT.set(RwLock::new(input)).is_err() {
         panic!("input static already set! this is not supposed to happen")
     }
+
+    module.define_module_function("update", function!(update, 0))?;
 
     Ok(())
 }

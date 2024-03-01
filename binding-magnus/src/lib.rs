@@ -7,12 +7,7 @@ mod error;
 
 mod input;
 
-/// # Safety
-///
-/// Must be called in main(), or at least a function higher up the stack than any code calling Ruby.
-/// Must not drop [`Bindings`] until the very end of the process, after all Ruby execution has finished.
-/// Do not use Ruby values after Cleanup has been dropped.
-pub unsafe fn start(
+pub fn start(
     audio: librgss::Audio,
     graphics: librgss::Graphics,
     input: librgss::Input,
@@ -20,6 +15,8 @@ pub unsafe fn start(
     std::thread::Builder::new()
         .name("librgss ruby thread".to_string())
         .spawn(move || {
+            //? Safety
+            //? These bindings don't provide a way to access ruby values *at all* so it's not possible to access ruby values outside of this function call.
             let result = unsafe { run_ruby_thread(audio, graphics, input) };
             // exit the event loop after we're finished running ruby code (for any reason)
             input::get_input().read().exit();
