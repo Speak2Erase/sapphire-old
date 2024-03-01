@@ -1837,6 +1837,7 @@ name = "rsgss-binding-magnus"
 version = "0.1.0"
 dependencies = [
  "alox-48",
+ "color-eyre",
  "flate2",
  "librgss",
  "magnus",

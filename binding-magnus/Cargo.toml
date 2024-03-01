@@ -8,6 +8,8 @@ magnus = "0.6.2"
 
 librgss = { version = "0.1.0", path = "../librgss/" }
 
+color-eyre.workspace = true
+
 alox-48 = "0.4.0"
 serde = "1.0.197"
 flate2 = "1.0"

@@ -3,7 +3,7 @@
 mod scripts;
 use scripts::Script;
 
-pub type Result<T> = std::result::Result<T, magnus::Error>;
+mod error;
 
 /// # Safety
 ///
@@ -14,7 +14,7 @@ pub unsafe fn start(
     audio: librgss::Audio,
     graphics: librgss::Graphics,
     input: librgss::Input,
-) -> std::thread::JoinHandle<()> {
+) -> std::thread::JoinHandle<color_eyre::Result<()>> {
     std::thread::Builder::new()
         .name("librgss ruby thread".to_string())
         .spawn(move || unsafe { run_ruby_thread(audio, graphics, input) })
@@ -25,24 +25,15 @@ unsafe fn run_ruby_thread(
     audio: librgss::Audio,
     graphics: librgss::Graphics,
     input: librgss::Input,
-) {
+) -> color_eyre::Result<()> {
     let cleanup = unsafe { magnus::embed::init() };
 
-    std::env::set_current_dir("OSFM/").unwrap();
+    std::env::set_current_dir("OSFM/")?;
 
-    #[cfg(feature = "modshot")]
-    cleanup
-        .eval::<magnus::Value>(
-            "$LOAD_PATH.unshift(File.join(Dir.pwd, 'lib', 'ruby'))\n
-            $LOAD_PATH.unshift(File.join(Dir.pwd, 'lib', 'ruby', RUBY_PLATFORM))\n",
-        )
-        .expect("failed to setup load path");
+    init_bindings(&cleanup).map_err(error::magnus_to_eyre)?;
 
-    init_bindings(&cleanup).expect("failed to init ruby bindings");
-
-    let script_data = std::fs::read("Data/xScripts.rxdata").expect("failed to read script data");
-    let scripts: Vec<Script> =
-        alox_48::from_bytes(&script_data).expect("failed to decode script data");
+    let script_data = std::fs::read("Data/xScripts.rxdata")?;
+    let scripts: Vec<Script> = alox_48::from_bytes(&script_data)?;
 
     // run all scripts.
     // due to the design of rgss, this will block until script completion
@@ -50,15 +41,20 @@ unsafe fn run_ruby_thread(
         cleanup.script(script.name);
         cleanup
             .eval::<magnus::Value>(&script.script_text)
-            .expect("failed to evaluate script");
+            .map_err(error::magnus_to_eyre)?;
     }
 
     // when input is dropped the event loop will exit by proxy
-    // this is because the Events struct inside Input has a reciever used for passing events
-    // when the reciever is dropped, the event loop will exit
+    Ok(())
 }
 
 #[cfg_attr(not(feature = "embed"), magnus::init)]
-fn init_bindings(ruby: &magnus::Ruby) -> Result<()> {
+fn init_bindings(ruby: &magnus::Ruby) -> Result<(), magnus::Error> {
+    #[cfg(feature = "modshot")]
+    ruby.eval::<magnus::Value>(
+        "$LOAD_PATH.unshift(File.join(Dir.pwd, 'lib', 'ruby'))\n
+            $LOAD_PATH.unshift(File.join(Dir.pwd, 'lib', 'ruby', RUBY_PLATFORM))\n",
+    )?;
+
     Ok(())
 }

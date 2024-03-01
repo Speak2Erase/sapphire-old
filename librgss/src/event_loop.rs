@@ -35,6 +35,12 @@ pub(crate) enum UserEvent {
     ExitBindingThread,
 }
 
+impl Drop for Events {
+    fn drop(&mut self) {
+        let _ = self.event_proxy.send_event(UserEvent::ExitEventLoop);
+    }
+}
+
 impl EventLoop {
     pub fn new() -> color_eyre::Result<(Self, Events)> {
         let event_loop = winit::event_loop::EventLoopBuilder::with_user_event().build()?;
@@ -76,7 +82,7 @@ impl EventLoop {
                 _ => {}
             }
 
-            if self.event_sender.send(event).is_err() {
+            if self.event_sender.send(event).is_err() && !target.exiting() {
                 eprintln!("event loop sender error (implies reciever was dropped), exiting");
                 target.exit();
             }
