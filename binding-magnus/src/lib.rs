@@ -7,6 +7,11 @@ mod error;
 
 mod input;
 
+#[cfg(feature = "modshot")]
+mod oneshot;
+
+mod rpg;
+
 pub fn start(
     audio: librgss::Audio,
     graphics: librgss::Graphics,
@@ -35,6 +40,8 @@ unsafe fn run_ruby_thread(
     std::env::set_current_dir("OSFM/")?;
 
     init_bindings(&cleanup, audio, graphics, input).map_err(error::magnus_to_eyre)?;
+
+    rpg::eval(&cleanup).map_err(error::magnus_to_eyre)?;
 
     let script_data = std::fs::read("Data/xScripts.rxdata")?;
     let scripts: Vec<Script> = alox_48::from_bytes(&script_data)?;
@@ -65,6 +72,10 @@ fn init_bindings(
     )?;
 
     input::bind(ruby, input)?;
+
+    #[cfg(feature = "modshot")]
+    oneshot::bind(ruby)?;
+
     // TODO
     std::mem::forget(audio);
     std::mem::forget(graphics);
