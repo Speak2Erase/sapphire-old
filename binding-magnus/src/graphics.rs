@@ -21,6 +21,7 @@ use std::sync::OnceLock;
 // FIXME find a way around using a static
 pub(crate) static GRAPHICS: OnceLock<RwLock<librgss::Graphics>> = OnceLock::new();
 
+#[inline(always)]
 pub fn get_graphics() -> &'static RwLock<librgss::Graphics> {
     GRAPHICS
         .get()

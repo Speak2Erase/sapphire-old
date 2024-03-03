@@ -1,10 +1,12 @@
 [package]
-name = "rsgss-binding-magnus"
+name = "sapphire-binding-magnus"
 version = "0.1.0"
 edition = "2021"
 
+
 [dependencies]
 magnus = "0.6.2"
+rb-sys = "0.9.90"
 
 librgss = { version = "0.1.0", path = "../librgss/" }
 

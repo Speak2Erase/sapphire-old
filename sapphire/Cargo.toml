@@ -5,7 +5,7 @@ edition = "2021"
 
 [dependencies]
 librgss = { version = "0.1.0", path = "../librgss" }
-rsgss-binding-magnus = { version = "0.1.0", path = "../binding-magnus", features = [
+sapphire-binding-magnus = { version = "0.1.0", path = "../binding-magnus", features = [
   "embed",
 ], optional = true }
 
@@ -14,10 +14,10 @@ pollster = "0.3.0"
 color-eyre.workspace = true
 
 [features]
-magnus = ["rsgss-binding-magnus"]
+magnus = ["sapphire-binding-magnus"]
 mlua = []
 
 default = ["magnus", "modshot"] # testing against modshot for now
 
-modshot = ["rsgss-binding-magnus/modshot"]
-mkxp-z = ["rsgss-binding-magnus/mkxp-z"]
+modshot = ["sapphire-binding-magnus/modshot"]
+mkxp-z = ["sapphire-binding-magnus/mkxp-z"]

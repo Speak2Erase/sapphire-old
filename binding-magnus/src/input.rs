@@ -23,6 +23,7 @@ use std::sync::OnceLock;
 // FIXME find a way around using a static
 pub(crate) static INPUT: OnceLock<RwLock<librgss::Input>> = OnceLock::new();
 
+#[inline(always)]
 pub fn get_input() -> &'static RwLock<librgss::Input> {
     INPUT
         .get()

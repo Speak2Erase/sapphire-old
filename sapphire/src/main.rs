@@ -21,7 +21,7 @@ fn run() -> color_eyre::Result<()> {
     let input = librgss::Input::new(events);
 
     #[cfg(feature = "magnus")]
-    let bindings_thread = unsafe { rsgss_binding_magnus::start(audio, graphics, input) };
+    let bindings_thread = sapphire_binding_magnus::start(audio, graphics, input);
 
     event_loop.run()?;
 

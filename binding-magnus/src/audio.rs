@@ -21,6 +21,7 @@ use std::sync::OnceLock;
 // FIXME find a way around using a static
 pub(crate) static AUDIO: OnceLock<Mutex<librgss::Audio>> = OnceLock::new();
 
+#[inline(always)]
 pub fn get_audio() -> &'static Mutex<librgss::Audio> {
     AUDIO
         .get()

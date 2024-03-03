@@ -1,5 +1,5 @@
 {
   "rust-analyzer.cargo.features": [
-    "rsgss-binding-magnus/embed"
+    "sapphire-binding-magnus/embed"
   ]
 }

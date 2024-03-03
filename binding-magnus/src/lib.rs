@@ -46,9 +46,11 @@ unsafe fn run_ruby_thread(
 ) -> color_eyre::Result<()> {
     let cleanup = unsafe { magnus::embed::init() };
 
-    std::env::set_current_dir("OSFM/")?;
-
+    // It is *really* important that we call this function before doing anyhting else!
+    // If any initialization fails, input::get_input() might fail and we will panic.
     init_bindings(&cleanup, audio, graphics, input).map_err(error::magnus_to_eyre)?;
+
+    std::env::set_current_dir("OSFM/")?;
 
     rpg::eval(&cleanup).map_err(error::magnus_to_eyre)?;
 
@@ -67,7 +69,13 @@ unsafe fn run_ruby_thread(
     Ok(())
 }
 
-#[cfg_attr(not(feature = "embed"), magnus::init)]
+#[cfg(not(feature = "embed"))]
+#[magnus::init]
+fn init(ruby: &magnus::Ruby) {
+    // TODO figure out how to run the event loop on demand or on another thread (in a cross platform way)
+    todo!()
+}
+
 fn init_bindings(
     ruby: &magnus::Ruby,
     audio: librgss::Audio,
