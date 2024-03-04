@@ -44,25 +44,32 @@ unsafe fn run_ruby_thread(
     graphics: librgss::Graphics,
     input: librgss::Input,
 ) -> color_eyre::Result<()> {
-    let cleanup = unsafe { magnus::embed::init() };
+    let ruby = unsafe { magnus::embed::init() };
 
     // It is *really* important that we call this function before doing anyhting else!
     // If any initialization fails, input::get_input() might fail and we will panic.
-    init_bindings(&cleanup, audio, graphics, input).map_err(error::magnus_to_eyre)?;
+    init_bindings(&ruby, audio, graphics, input).map_err(error::magnus_to_eyre)?;
 
     std::env::set_current_dir("OSFM/")?;
 
-    rpg::eval(&cleanup).map_err(error::magnus_to_eyre)?;
+    #[cfg(feature = "modshot")]
+    ruby.eval::<magnus::Value>(
+        "$LOAD_PATH.unshift(File.join(Dir.pwd, 'lib', 'ruby'))\n
+         $LOAD_PATH.unshift(File.join(Dir.pwd, 'lib', 'ruby', RUBY_PLATFORM))\n",
+    )
+    .map_err(error::magnus_to_eyre)?;
 
+    rpg::eval(&ruby).map_err(error::magnus_to_eyre)?;
+
+    // FIXME should we just use marshal directly from ruby?
     let script_data = std::fs::read("Data/xScripts.rxdata")?;
     let scripts: Vec<Script> = alox_48::from_bytes(&script_data)?;
 
     // run all scripts. due to the design of rgss, this will block until script completion
     // if the event loop has exited, the next call to Input::update will raise SystemExit, so this loop will exit
     for script in scripts {
-        cleanup.script(script.name);
-        cleanup
-            .eval::<magnus::Value>(&script.script_text)
+        ruby.script(script.name);
+        ruby.eval::<magnus::Value>(&script.script_text)
             .map_err(error::magnus_to_eyre)?;
     }
 
@@ -82,12 +89,6 @@ fn init_bindings(
     graphics: librgss::Graphics,
     input: librgss::Input,
 ) -> Result<(), magnus::Error> {
-    #[cfg(feature = "modshot")]
-    ruby.eval::<magnus::Value>(
-        "$LOAD_PATH.unshift(File.join(Dir.pwd, 'lib', 'ruby'))\n
-         $LOAD_PATH.unshift(File.join(Dir.pwd, 'lib', 'ruby', RUBY_PLATFORM))\n",
-    )?;
-
     audio::bind(ruby, audio)?;
 
     graphics::bind(ruby, graphics)?;

@@ -24,6 +24,7 @@ pub struct Input {
     exited: bool,
 }
 
+// TODO add an optional pump_events feature that uses winit::EventLoopExtPumpEvents that allows running bindings on the main thread
 impl Input {
     pub fn new(events: Events) -> Self {
         Self {
