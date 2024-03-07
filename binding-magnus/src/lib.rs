@@ -1,11 +1,15 @@
 #![forbid(unsafe_op_in_unsafe_fn)]
 
 mod scripts;
+use std::sync::Arc;
+
 use scripts::Script;
 
 mod error;
 
 mod audio;
+
+mod filesystem;
 
 mod bitmap;
 mod font;
@@ -25,15 +29,19 @@ pub fn start(
     audio: librgss::Audio,
     graphics: librgss::Graphics,
     input: librgss::Input,
+    filesystem: Arc<librgss::FileSystem>,
 ) -> std::thread::JoinHandle<color_eyre::Result<()>> {
     std::thread::Builder::new()
         .name("librgss ruby thread".to_string())
         .spawn(move || {
             //? Safety
             //? These bindings don't provide a way to access ruby values *at all* so it's not possible to access ruby values outside of this function call.
-            let result = unsafe { run_ruby_thread(audio, graphics, input) };
+            let result = unsafe { run_ruby_thread(audio, graphics, input, filesystem) };
             // exit the event loop after we're finished running ruby code (for any reason)
             input::get_input().read().exit();
+            // stop audio processing
+            // FIXME should we do this here, or in main.rs?
+            audio::get_audio().read().stop_processing();
             result
         })
         .expect("failed to start ruby thread")
@@ -43,21 +51,13 @@ unsafe fn run_ruby_thread(
     audio: librgss::Audio,
     graphics: librgss::Graphics,
     input: librgss::Input,
+    filesystem: Arc<librgss::FileSystem>,
 ) -> color_eyre::Result<()> {
     let ruby = unsafe { magnus::embed::init() };
 
     // It is *really* important that we call this function before doing anyhting else!
     // If any initialization fails, input::get_input() might fail and we will panic.
-    init_bindings(&ruby, audio, graphics, input).map_err(error::magnus_to_eyre)?;
-
-    std::env::set_current_dir("OSFM/")?;
-
-    #[cfg(feature = "modshot")]
-    ruby.eval::<magnus::Value>(
-        "$LOAD_PATH.unshift(File.join(Dir.pwd, 'lib', 'ruby'))\n
-         $LOAD_PATH.unshift(File.join(Dir.pwd, 'lib', 'ruby', RUBY_PLATFORM))\n",
-    )
-    .map_err(error::magnus_to_eyre)?;
+    init_bindings(&ruby, audio, graphics, input, filesystem).map_err(error::magnus_to_eyre)?;
 
     rpg::eval(&ruby).map_err(error::magnus_to_eyre)?;
 
@@ -88,8 +88,11 @@ fn init_bindings(
     audio: librgss::Audio,
     graphics: librgss::Graphics,
     input: librgss::Input,
+    filesystem: Arc<librgss::FileSystem>,
 ) -> Result<(), magnus::Error> {
     audio::bind(ruby, audio)?;
+
+    filesystem::bind(ruby, filesystem)?;
 
     graphics::bind(ruby, graphics)?;
     bitmap::bind(ruby)?;
@@ -102,6 +105,12 @@ fn init_bindings(
 
     #[cfg(feature = "modshot")]
     oneshot::bind(ruby)?;
+
+    #[cfg(feature = "modshot")]
+    ruby.eval::<magnus::Value>(
+        "$LOAD_PATH.unshift(File.join(Dir.pwd, 'lib', 'ruby'))\n
+         $LOAD_PATH.unshift(File.join(Dir.pwd, 'lib', 'ruby', RUBY_PLATFORM))\n",
+    )?;
 
     Ok(())
 }

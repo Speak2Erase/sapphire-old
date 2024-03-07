@@ -64,8 +64,8 @@ trait FileSystemTrait: Send + Sync {
 }
 
 impl FileSystem {
-    pub fn new(root_path: &Utf8Path, archive_path: Option<&Utf8Path>) -> Result<Self> {
-        let host = host::FileSystem::new(root_path);
+    pub fn new(root_path: impl AsRef<Utf8Path>, archive_path: Option<&Utf8Path>) -> Result<Self> {
+        let host = host::FileSystem::new(root_path.as_ref());
 
         // TODO
         // if let Some(archive_path) = archive_path {
@@ -81,7 +81,7 @@ impl FileSystem {
         Ok(Self { fs: path_cache })
     }
 
-    pub fn read_file(&self, path: &Utf8Path) -> Result<Box<dyn File>> {
-        self.fs.read_file(path)
+    pub fn read_file(&self, path: impl AsRef<Utf8Path>) -> Result<Box<dyn File>> {
+        self.fs.read_file(path.as_ref())
     }
 }
