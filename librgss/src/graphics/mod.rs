@@ -19,7 +19,7 @@ use color_eyre::eyre::OptionExt;
 use std::sync::Arc;
 use winit::window::Window;
 
-use crate::event_loop::EventLoop;
+use crate::{EventLoop, FileSystem};
 
 mod bitmap;
 pub use bitmap::Bitmap;
@@ -38,6 +38,7 @@ pub use font::Font;
 
 pub struct Graphics {
     window: Arc<Window>,
+    filesystem: Arc<FileSystem>,
     pub(crate) graphics_state: GraphicsState,
 }
 
@@ -50,7 +51,10 @@ pub(crate) struct GraphicsState {
 }
 
 impl Graphics {
-    pub async fn new(event_loop: &EventLoop) -> color_eyre::Result<Self> {
+    pub async fn new(
+        event_loop: &EventLoop,
+        filesystem: Arc<FileSystem>,
+    ) -> color_eyre::Result<Self> {
         let window = winit::window::WindowBuilder::new()
             .with_inner_size(winit::dpi::PhysicalSize::new(640, 480))
             .with_resizable(false)
@@ -60,6 +64,7 @@ impl Graphics {
 
         Ok(Self {
             window,
+            filesystem,
             graphics_state,
         })
     }

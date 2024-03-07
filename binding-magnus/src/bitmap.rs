@@ -15,8 +15,40 @@
 // You should have received a copy of the GNU General Public License
 // along with sapphire.  If not, see <http://www.gnu.org/licenses/>.
 
+use magnus::{function, Object, TryConvert, Value};
+use std::sync::Arc;
+
+use crate::graphics::get_graphics;
+
+#[magnus::wrap(class = "Bitmap", free_immediately, size)]
+struct Bitmap(Arc<librgss::Bitmap>);
+
+fn new(args: &[Value]) -> Result<Bitmap, magnus::Error> {
+    magnus::scan_args::check_arity(args.len(), 1..=2)?;
+
+    let graphics = get_graphics().read();
+    Ok(match args {
+        [path] => {
+            let path = String::try_convert(*path)?;
+
+            let bitmap = librgss::Bitmap::new_path(&graphics, path);
+            Bitmap(Arc::new(bitmap))
+        }
+        [width, height] => {
+            let width = u32::try_convert(*width)?;
+            let height = u32::try_convert(*height)?;
+
+            let bitmap = librgss::Bitmap::new(&graphics, width, height);
+            Bitmap(Arc::new(bitmap))
+        }
+        _ => unreachable!(),
+    })
+}
+
 pub fn bind(ruby: &magnus::Ruby) -> Result<(), magnus::Error> {
     let class = ruby.define_class("Bitmap", ruby.class_object())?;
+
+    class.define_singleton_method("new", function!(new, -1))?;
 
     Ok(())
 }

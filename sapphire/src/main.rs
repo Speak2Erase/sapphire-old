@@ -27,7 +27,7 @@ fn run() -> color_eyre::Result<()> {
     let (audio, audio_thread) = librgss::Audio::new(filesystem.clone())?;
     // we block on graphics because creating graphics is an async operation.
     // if we were to be running this on say, the browser, we would need to actually await this (rather than using block_on)
-    let graphics = librgss::Graphics::new(&event_loop).block_on()?;
+    let graphics = librgss::Graphics::new(&event_loop, filesystem.clone()).block_on()?;
 
     #[cfg(feature = "magnus")]
     let bindings_thread = sapphire_binding_magnus::start(audio, graphics, input, filesystem);
