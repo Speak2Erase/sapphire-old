@@ -64,6 +64,8 @@ pub fn bind(ruby: &magnus::Ruby) -> Result<(), magnus::Error> {
     oneshot.const_set("GAME_PATH", game_dir)?;
     oneshot.const_set("USER_NAME", username)?;
 
+    oneshot.const_set("LANG", "en")?;
+
     #[cfg(target_os = "linux")]
     oneshot.const_set("OS", "linux")?;
     #[cfg(target_os = "windows")]

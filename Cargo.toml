@@ -8,6 +8,7 @@ winit = "0.29.11"
 gilrs = "0.10.4"
 # Graphics
 wgpu = "0.19.3"
+glyphon = "0.5.0"
 # Asset loading
 image = "0.24.9"
 # Audio

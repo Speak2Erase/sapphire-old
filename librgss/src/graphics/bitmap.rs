@@ -20,6 +20,7 @@ use wgpu::util::DeviceExt;
 use crate::Graphics;
 
 pub struct Bitmap {
+    // TODO investigate texture atlases
     pub(crate) texture: wgpu::Texture,
     pub(crate) view: wgpu::TextureView,
 }

@@ -18,7 +18,7 @@
 use magnus::{function, Object, Value};
 
 #[magnus::wrap(class = "Color", size, free_immediately)]
-struct Color(librgss::Color);
+pub struct Color(pub librgss::Color);
 
 fn color_new(args: &[Value]) -> Result<Color, magnus::Error> {
     let args = magnus::scan_args::scan_args::<_, _, (), (), (), ()>(args)?;
@@ -37,7 +37,7 @@ fn color_new(args: &[Value]) -> Result<Color, magnus::Error> {
 }
 
 #[magnus::wrap(class = "Tone", size, free_immediately)]
-struct Tone(librgss::Tone);
+pub struct Tone(pub librgss::Tone);
 
 fn tone_new(args: &[Value]) -> Result<Tone, magnus::Error> {
     let args = magnus::scan_args::scan_args::<_, _, (), (), (), ()>(args)?;

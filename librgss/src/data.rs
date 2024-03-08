@@ -38,3 +38,33 @@ pub struct Rect {
     pub width: u32,
     pub height: u32,
 }
+
+impl Color {
+    pub const WHITE: Self = Self {
+        red: 255,
+        blue: 255,
+        green: 255,
+        alpha: 255,
+    };
+
+    pub const BLACK: Self = Self {
+        red: 0,
+        blue: 0,
+        green: 0,
+        alpha: 255,
+    };
+
+    pub const GREY: Self = Self {
+        red: 0,
+        blue: 0,
+        green: 0,
+        alpha: 128,
+    };
+
+    pub const TRANSPARENT: Self = Self {
+        red: 0,
+        blue: 0,
+        green: 0,
+        alpha: 0,
+    };
+}

@@ -4,8 +4,10 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
+# TODO look into kira
 rodio.workspace = true
 wgpu.workspace = true
+glyphon.workspace = true
 winit.workspace = true
 image.workspace = true
 
@@ -18,14 +20,18 @@ camino.workspace = true
 
 crossbeam.workspace = true
 parking_lot.workspace = true
+arc-swap.workspace = true
 
 [features]
-rgss1 = []
+# FIXME proper tilemap switching
 rgss2 = []
 rgss3 = []
+
+rgss1_tilemap = []
+rgss2_tilemap = []
 
 # not sure about this one
 rgss4 = []
 
-modshot = []
+modshot = ["rgss1_tilemap", "rgss2", "rgss3"]
 mkxp-z = []

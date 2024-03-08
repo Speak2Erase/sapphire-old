@@ -33,9 +33,6 @@ pub use plane::Plane;
 mod tilemap;
 pub use tilemap::Tilemap;
 
-mod font;
-pub use font::Font;
-
 pub struct Graphics {
     window: Arc<Window>,
     filesystem: Arc<FileSystem>,

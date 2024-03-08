@@ -27,6 +27,16 @@ rfd = { version = "0.14.0", features = ["gtk3"], default-features = false }
 embed = ["magnus/embed"]
 static = ["magnus/ruby-static"]
 
-modshot = ["librgss/modshot", "whoami", "dirs"]
+# FIXME proper tilemap switching
+rgss2 = ["librgss/rgss2"]
+rgss3 = ["librgss/rgss3"]
+
+rgss1_tilemap = []
+rgss2_tilemap = []
+
+# not sure about this one
+rgss4 = []
+
+modshot = ["librgss/modshot", "whoami", "dirs", "rgss2", "rgss3"]
 mkxp-z = ["librgss/mkxp-z"]
 steam = []

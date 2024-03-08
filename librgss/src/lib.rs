@@ -10,8 +10,11 @@ pub use event_loop::{EventLoop, Events};
 mod filesystem;
 pub use filesystem::{Error, File, FileSystem};
 
+mod font;
+pub use font::{Font, Fonts};
+
 pub mod graphics;
-pub use graphics::{Bitmap, Font, Graphics, Plane, Sprite, Tilemap};
+pub use graphics::{Bitmap, Graphics, Plane, Sprite, Tilemap};
 
 mod input;
 pub use input::Input;

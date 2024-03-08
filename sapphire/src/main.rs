@@ -1,5 +1,6 @@
 use std::sync::Arc;
 
+use color_eyre::Section;
 use pollster::FutureExt;
 
 fn main() -> std::process::ExitCode {
@@ -29,18 +30,24 @@ fn run() -> color_eyre::Result<()> {
     // if we were to be running this on say, the browser, we would need to actually await this (rather than using block_on)
     let graphics = librgss::Graphics::new(&event_loop, filesystem.clone()).block_on()?;
 
+    let fonts = librgss::Fonts::new();
+
     #[cfg(feature = "magnus")]
-    let bindings_thread = sapphire_binding_magnus::start(audio, graphics, input, filesystem);
+    let bindings_thread = sapphire_binding_magnus::start(audio, graphics, fonts, input, filesystem);
 
     // run the event loop to completion. for compatibility reasons, this blocks the main thread
     event_loop.run()?;
 
     let binding_thread_result = bindings_thread.join();
-    librgss::join_handle_result_to_eyre(binding_thread_result)??;
+    librgss::join_handle_result_to_eyre(binding_thread_result)
+        .note("panic in binding thread")?
+        .note("fatal error in binding thread")?;
 
     // not sure about this
     let audio_thread_result = audio_thread.join();
-    librgss::join_handle_result_to_eyre(audio_thread_result)??;
+    librgss::join_handle_result_to_eyre(audio_thread_result)
+        .note("panic in audio thread")?
+        .note("error in audio thread")?;
 
     Ok(())
 }

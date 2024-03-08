@@ -36,6 +36,7 @@ mod rpg;
 pub fn start(
     audio: librgss::Audio,
     graphics: librgss::Graphics,
+    fonts: librgss::Fonts,
     input: librgss::Input,
     filesystem: Arc<librgss::FileSystem>,
 ) -> std::thread::JoinHandle<color_eyre::Result<()>> {
@@ -44,7 +45,7 @@ pub fn start(
         .spawn(move || {
             //? Safety
             //? These bindings don't provide a way to access ruby values *at all* so it's not possible to access ruby values outside of this function call.
-            let result = unsafe { run_ruby_thread(audio, graphics, input, filesystem) };
+            let result = unsafe { run_ruby_thread(audio, graphics, fonts, input, filesystem) };
             // exit the event loop after we're finished running ruby code (for any reason)
             input::get_input().read().exit();
             // stop audio processing
@@ -58,6 +59,7 @@ pub fn start(
 unsafe fn run_ruby_thread(
     audio: librgss::Audio,
     graphics: librgss::Graphics,
+    fonts: librgss::Fonts,
     input: librgss::Input,
     filesystem: Arc<librgss::FileSystem>,
 ) -> color_eyre::Result<()> {
@@ -65,7 +67,8 @@ unsafe fn run_ruby_thread(
 
     // It is *really* important that we call this function before doing anyhting else!
     // If any initialization fails, input::get_input() might fail and we will panic.
-    init_bindings(&ruby, audio, graphics, input, filesystem).map_err(error::magnus_to_eyre)?;
+    init_bindings(&ruby, audio, graphics, fonts, input, filesystem)
+        .map_err(error::magnus_to_eyre)?;
 
     rpg::eval(&ruby).map_err(error::magnus_to_eyre)?;
 
@@ -112,6 +115,7 @@ fn init_bindings(
     ruby: &magnus::Ruby,
     audio: librgss::Audio,
     graphics: librgss::Graphics,
+    fonts: librgss::Fonts,
     input: librgss::Input,
     filesystem: Arc<librgss::FileSystem>,
 ) -> Result<(), magnus::Error> {
@@ -125,7 +129,7 @@ fn init_bindings(
     graphics::bind(ruby, graphics)?;
     bitmap::bind(ruby)?;
     sprite::bind(ruby)?;
-    font::bind(ruby)?;
+    font::bind(ruby, fonts)?;
     plane::bind(ruby)?;
     tilemap::bind(ruby)?;
     window::bind(ruby)?;
