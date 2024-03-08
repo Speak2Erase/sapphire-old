@@ -58,6 +58,7 @@ impl Graphics {
         let window = winit::window::WindowBuilder::new()
             .with_inner_size(winit::dpi::PhysicalSize::new(640, 480))
             .with_resizable(false)
+            .with_title("Sapphire")
             .build(&event_loop.event_loop)
             .map(Arc::new)?;
         let graphics_state = GraphicsState::new(window.clone()).await?;
@@ -67,6 +68,11 @@ impl Graphics {
             filesystem,
             graphics_state,
         })
+    }
+
+    #[cfg(feature = "modshot")]
+    pub fn set_window_title(&self, title: &str) {
+        self.window.set_title(title)
     }
 }
 

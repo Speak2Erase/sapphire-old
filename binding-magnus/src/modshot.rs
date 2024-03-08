@@ -15,19 +15,22 @@
 // You should have received a copy of the GNU General Public License
 // along with sapphire.  If not, see <http://www.gnu.org/licenses/>.
 
-use magnus::{function, Object};
+use magnus::function;
 
-fn default_name() -> String {
-    todo!()
+use crate::graphics::get_graphics;
+
+fn set_title(title: String) {
+    let graphics = get_graphics().read();
+    graphics.set_window_title(&title);
 }
 
-fn set_default_name(name: String) {}
+fn set_icon(icon: String) {}
 
 pub fn bind(ruby: &magnus::Ruby) -> Result<(), magnus::Error> {
-    let class = ruby.define_class("Font", ruby.class_object())?;
+    let mod_window = ruby.define_module("ModWindow")?;
 
-    class.define_singleton_method("default_name", function!(default_name, 0))?;
-    class.define_singleton_method("default_name=", function!(set_default_name, 1))?;
+    mod_window.define_module_function("SetTitle", function!(set_title, 1))?;
+    mod_window.define_module_function("SetIcon", function!(set_icon, 1))?;
 
     Ok(())
 }

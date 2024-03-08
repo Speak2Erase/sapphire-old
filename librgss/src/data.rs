@@ -15,19 +15,26 @@
 // You should have received a copy of the GNU General Public License
 // along with sapphire.  If not, see <http://www.gnu.org/licenses/>.
 
-use magnus::{function, Object};
-
-fn default_name() -> String {
-    todo!()
+#[derive(Clone, Copy, PartialEq, Eq, Hash, Debug, Default)]
+pub struct Color {
+    pub red: u8,
+    pub blue: u8,
+    pub green: u8,
+    pub alpha: u8,
 }
 
-fn set_default_name(name: String) {}
+#[derive(Clone, Copy, PartialEq, Eq, Hash, Debug, Default)]
+pub struct Tone {
+    pub red: u8,
+    pub blue: u8,
+    pub green: u8,
+    pub grey: u8,
+}
 
-pub fn bind(ruby: &magnus::Ruby) -> Result<(), magnus::Error> {
-    let class = ruby.define_class("Font", ruby.class_object())?;
-
-    class.define_singleton_method("default_name", function!(default_name, 0))?;
-    class.define_singleton_method("default_name=", function!(set_default_name, 1))?;
-
-    Ok(())
+#[derive(Clone, Copy, PartialEq, Eq, Hash, Debug, Default)]
+pub struct Rect {
+    pub x: u32,
+    pub y: u32,
+    pub width: u32,
+    pub height: u32,
 }

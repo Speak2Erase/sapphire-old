@@ -15,7 +15,7 @@
 // You should have received a copy of the GNU General Public License
 // along with sapphire.  If not, see <http://www.gnu.org/licenses/>.
 
-use magnus::function;
+use magnus::{function, Module};
 
 use parking_lot::RwLock;
 use std::sync::OnceLock;
@@ -50,6 +50,11 @@ pub fn bind(ruby: &magnus::Ruby, input: librgss::Input) -> Result<(), magnus::Er
     }
 
     module.define_module_function("update", function!(update, 0))?;
+
+    module.const_set("KEY_M", 0)?;
+    module.const_set("KEY_E", 0)?;
+    module.const_set("KEY_O", 0)?;
+    module.const_set("KEY_W", 0)?;
 
     Ok(())
 }

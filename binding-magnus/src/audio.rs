@@ -31,14 +31,29 @@ pub fn get_audio() -> &'static RwLock<librgss::Audio> {
 }
 
 fn bgm_play(args: &[Value]) -> Result<(), magnus::Error> {
-    let args = magnus::scan_args::scan_args::<_, _, (), (), (), ()>(args)?;
+    #[cfg(not(feature = "modshot"))]
+    {
+        let args = magnus::scan_args::scan_args::<_, _, (), (), (), ()>(args)?;
 
-    let (path,): (String,) = args.required;
-    let (volume, pitch) = args.optional;
+        let (path,): (String,) = args.required;
+        let (volume, pitch) = args.optional;
 
-    get_audio()
-        .read()
-        .bgm_play(path, volume.unwrap_or(100), pitch.unwrap_or(100));
+        get_audio()
+            .read()
+            .bgm_play(path, volume.unwrap_or(100), pitch.unwrap_or(100));
+    }
+    #[cfg(feature = "modshot")]
+    {
+        let args = magnus::scan_args::scan_args::<_, _, (), (), (), ()>(args)?;
+
+        let (path,): (String,) = args.required;
+        let (volume, pitch, pos, nofade): (Option<u32>, Option<u32>, Option<i32>, Option<bool>) =
+            args.optional;
+
+        get_audio()
+            .read()
+            .bgm_play(path, volume.unwrap_or(100), pitch.unwrap_or(100));
+    }
 
     Ok(())
 }

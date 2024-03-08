@@ -15,7 +15,7 @@
 // You should have received a copy of the GNU General Public License
 // along with sapphire.  If not, see <http://www.gnu.org/licenses/>.
 
-use magnus::{function, Object, TryConvert, Value};
+use magnus::{function, method, Module, Object, TryConvert, Value};
 use std::sync::Arc;
 
 use crate::graphics::get_graphics;
@@ -45,10 +45,16 @@ fn new(args: &[Value]) -> Result<Bitmap, magnus::Error> {
     })
 }
 
+fn disposed(bitmap: &Bitmap) -> bool {
+    false
+}
+
 pub fn bind(ruby: &magnus::Ruby) -> Result<(), magnus::Error> {
     let class = ruby.define_class("Bitmap", ruby.class_object())?;
 
     class.define_singleton_method("new", function!(new, -1))?;
+
+    class.define_method("disposed?", method!(disposed, 0))?;
 
     Ok(())
 }

@@ -15,19 +15,16 @@
 // You should have received a copy of the GNU General Public License
 // along with sapphire.  If not, see <http://www.gnu.org/licenses/>.
 
-use magnus::{function, Object};
+use magnus::function;
 
-fn default_name() -> String {
-    todo!()
+fn enabled() -> bool {
+    false
 }
 
-fn set_default_name(name: String) {}
-
 pub fn bind(ruby: &magnus::Ruby) -> Result<(), magnus::Error> {
-    let class = ruby.define_class("Font", ruby.class_object())?;
+    let module = ruby.define_module("Steam")?;
 
-    class.define_singleton_method("default_name", function!(default_name, 0))?;
-    class.define_singleton_method("default_name=", function!(set_default_name, 1))?;
+    module.define_module_function("enabled?", function!(enabled, 0))?;
 
     Ok(())
 }

@@ -48,3 +48,9 @@ pub fn magnus_to_eyre(value: magnus::Error) -> color_eyre::Report {
 
     report
 }
+
+pub fn bind(ruby: &magnus::Ruby) -> Result<(), magnus::Error> {
+    let class = ruby.define_class("RGSSError", ruby.exception_standard_error().as_r_class())?;
+
+    Ok(())
+}

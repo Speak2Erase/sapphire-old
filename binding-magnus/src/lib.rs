@@ -3,9 +3,12 @@
 mod scripts;
 use std::sync::Arc;
 
+use magnus::{function, value::ReprValue};
 use scripts::Script;
 
 mod error;
+
+mod data;
 
 mod audio;
 
@@ -17,11 +20,16 @@ mod graphics;
 mod plane;
 mod sprite;
 mod tilemap;
+mod window;
 
 mod input;
 
 #[cfg(feature = "modshot")]
+mod modshot;
+#[cfg(feature = "modshot")]
 mod oneshot;
+#[cfg(feature = "modshot")]
+mod steam;
 
 mod rpg;
 
@@ -83,6 +91,23 @@ fn init(ruby: &magnus::Ruby) {
     todo!()
 }
 
+fn print(value: magnus::Value) {
+    let string_data = value.to_string();
+    rfd::MessageDialog::new()
+        .set_buttons(rfd::MessageButtons::Ok)
+        .set_description(string_data)
+        .set_title("Sapphire")
+        .show();
+}
+
+fn p(value: magnus::Value) {
+    let string_data = value.inspect();
+    rfd::MessageDialog::new()
+        .set_buttons(rfd::MessageButtons::Ok)
+        .set_description(string_data)
+        .show();
+}
+
 fn init_bindings(
     ruby: &magnus::Ruby,
     audio: librgss::Audio,
@@ -92,6 +117,9 @@ fn init_bindings(
 ) -> Result<(), magnus::Error> {
     audio::bind(ruby, audio)?;
 
+    data::bind(ruby)?;
+    error::bind(ruby)?;
+
     filesystem::bind(ruby, filesystem)?;
 
     graphics::bind(ruby, graphics)?;
@@ -100,17 +128,26 @@ fn init_bindings(
     font::bind(ruby)?;
     plane::bind(ruby)?;
     tilemap::bind(ruby)?;
+    window::bind(ruby)?;
 
     input::bind(ruby, input)?;
 
     #[cfg(feature = "modshot")]
-    oneshot::bind(ruby)?;
+    {
+        oneshot::bind(ruby)?;
+        modshot::bind(ruby)?;
+        steam::bind(ruby)?;
+    }
 
     #[cfg(feature = "modshot")]
     ruby.eval::<magnus::Value>(
         "$LOAD_PATH.unshift(File.join(Dir.pwd, 'lib', 'ruby'))\n
          $LOAD_PATH.unshift(File.join(Dir.pwd, 'lib', 'ruby', RUBY_PLATFORM))\n",
     )?;
+
+    let kernel = ruby.module_kernel();
+    kernel.define_module_function("p", function!(p, 1))?;
+    kernel.define_module_function("print", function!(print, 1))?;
 
     Ok(())
 }

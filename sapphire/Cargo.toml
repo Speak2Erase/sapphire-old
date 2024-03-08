@@ -23,3 +23,4 @@ default = ["magnus", "modshot"] # testing against modshot for now
 
 modshot = ["sapphire-binding-magnus/modshot"]
 mkxp-z = ["sapphire-binding-magnus/mkxp-z"]
+steam = ["sapphire-binding-magnus/steam"]
