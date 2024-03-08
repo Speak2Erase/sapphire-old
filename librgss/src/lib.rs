@@ -2,7 +2,7 @@ mod audio;
 pub use audio::Audio;
 
 mod data;
-pub use data::{Color, Rect, Tone};
+pub use data::{Color, Rect, Table, Tone};
 
 mod event_loop;
 pub use event_loop::{EventLoop, Events};
@@ -14,7 +14,7 @@ mod font;
 pub use font::{Font, Fonts};
 
 pub mod graphics;
-pub use graphics::{Bitmap, Graphics, Plane, Sprite, Tilemap};
+pub use graphics::{Bitmap, Graphics, Plane, Sprite, Tilemap, Viewport};
 
 mod input;
 pub use input::Input;

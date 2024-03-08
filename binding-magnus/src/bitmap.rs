@@ -21,7 +21,7 @@ use std::sync::Arc;
 use crate::graphics::get_graphics;
 
 #[magnus::wrap(class = "Bitmap", free_immediately, size)]
-struct Bitmap(Arc<librgss::Bitmap>);
+pub struct Bitmap(Arc<librgss::Bitmap>);
 
 fn new(args: &[Value]) -> Result<Bitmap, magnus::Error> {
     magnus::scan_args::check_arity(args.len(), 1..=2)?;
@@ -32,14 +32,14 @@ fn new(args: &[Value]) -> Result<Bitmap, magnus::Error> {
             let path = String::try_convert(*path)?;
 
             let bitmap = librgss::Bitmap::new_path(&graphics, path);
-            Bitmap(Arc::new(bitmap))
+            Bitmap(bitmap)
         }
         [width, height] => {
             let width = u32::try_convert(*width)?;
             let height = u32::try_convert(*height)?;
 
             let bitmap = librgss::Bitmap::new(&graphics, width, height);
-            Bitmap(Arc::new(bitmap))
+            Bitmap(bitmap)
         }
         _ => unreachable!(),
     })

@@ -20,6 +20,7 @@ mod graphics;
 mod plane;
 mod sprite;
 mod tilemap;
+mod viewport;
 mod window;
 
 mod input;
@@ -30,6 +31,8 @@ mod modshot;
 mod oneshot;
 #[cfg(feature = "modshot")]
 mod steam;
+
+mod helpers;
 
 mod rpg;
 
@@ -132,6 +135,7 @@ fn init_bindings(
     font::bind(ruby, fonts)?;
     plane::bind(ruby)?;
     tilemap::bind(ruby)?;
+    viewport::bind(ruby)?;
     window::bind(ruby)?;
 
     input::bind(ruby, input)?;

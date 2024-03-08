@@ -49,6 +49,14 @@ fn frame_count() -> u64 {
     0
 }
 
+fn set_frame_count(count: u64) {}
+
+fn frameskip() -> bool {
+    false
+}
+
+fn set_frameskip(frameskip: bool) {}
+
 fn transition(args: &[Value]) -> Result<(), magnus::Error> {
     let args = magnus::scan_args::scan_args::<(), _, (), (), (), ()>(args)?;
 
@@ -76,6 +84,10 @@ pub fn bind(ruby: &magnus::Ruby, graphics: librgss::Graphics) -> Result<(), magn
     module.define_module_function("frame_rate=", function!(set_frame_rate, 1))?;
 
     module.define_module_function("frame_count", function!(frame_count, 0))?;
+    module.define_module_function("frame_count=", function!(set_frame_count, 1))?;
+
+    module.define_module_function("frameskip", function!(frameskip, 0))?;
+    module.define_module_function("frameskip=", function!(set_frameskip, 1))?;
 
     Ok(())
 }

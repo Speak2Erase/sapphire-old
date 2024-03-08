@@ -25,7 +25,7 @@ pub struct Fonts {
     pub default: Font,
 }
 
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct Font {
     pub fonts: Vec<String>,
     pub size: u32,

@@ -17,19 +17,8 @@
 
 use magnus::{method, Module};
 
-use crate::bitmap::Bitmap;
-
-fn windowskin(rb_self: magnus::Value) -> Bitmap {
-    todo!()
-}
-
-fn set_windowskin(rb_self: magnus::Value, bitmap: &Bitmap) {}
-
 pub fn bind(ruby: &magnus::Ruby) -> Result<(), magnus::Error> {
-    let class = ruby.define_class("Window", ruby.class_object())?;
-
-    class.define_method("windowskin", method!(windowskin, 0))?;
-    class.define_method("windowskin=", method!(set_windowskin, 1))?;
+    let class = ruby.define_class("Viewport", ruby.class_object())?;
 
     Ok(())
 }

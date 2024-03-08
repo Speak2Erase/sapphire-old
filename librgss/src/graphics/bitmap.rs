@@ -15,6 +15,8 @@
 // You should have received a copy of the GNU General Public License
 // along with sapphire.  If not, see <http://www.gnu.org/licenses/>.
 
+use std::sync::Arc;
+
 use wgpu::util::DeviceExt;
 
 use crate::Graphics;
@@ -26,7 +28,7 @@ pub struct Bitmap {
 }
 
 impl Bitmap {
-    pub fn new(graphics: &Graphics, width: u32, height: u32) -> Self {
+    pub fn new(graphics: &Graphics, width: u32, height: u32) -> Arc<Self> {
         // TODO handle bitmaps that are too large
         let texture = graphics
             .graphics_state
@@ -34,10 +36,10 @@ impl Bitmap {
             .create_texture(&bitmap_texture_descriptor(width, height));
         let view = texture.create_view(&wgpu::TextureViewDescriptor::default());
 
-        Self { texture, view }
+        Arc::new(Self { texture, view })
     }
 
-    pub fn new_path(graphics: &Graphics, path: impl AsRef<camino::Utf8Path>) -> Self {
+    pub fn new_path(graphics: &Graphics, path: impl AsRef<camino::Utf8Path>) -> Arc<Self> {
         // TODO handle errors
         let mut image_file = graphics.filesystem.read_file(path).unwrap();
 
@@ -54,7 +56,7 @@ impl Bitmap {
         );
         let view = texture.create_view(&wgpu::TextureViewDescriptor::default());
 
-        Self { texture, view }
+        Arc::new(Self { texture, view })
     }
 }
 

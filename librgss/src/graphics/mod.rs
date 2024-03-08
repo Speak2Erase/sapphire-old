@@ -17,12 +17,15 @@
 
 use color_eyre::eyre::OptionExt;
 use std::sync::Arc;
-use winit::window::Window;
+use winit::window::Window as NativeWindow;
 
 use crate::{EventLoop, FileSystem};
 
 mod bitmap;
 pub use bitmap::Bitmap;
+
+mod drawable;
+use drawable::Drawable;
 
 mod sprite;
 pub use sprite::Sprite;
@@ -33,8 +36,17 @@ pub use plane::Plane;
 mod tilemap;
 pub use tilemap::Tilemap;
 
+mod viewport;
+pub use viewport::Viewport;
+
+mod window;
+pub use window::Window;
+
+mod z;
+use z::{ZList, Z};
+
 pub struct Graphics {
-    window: Arc<Window>,
+    window: Arc<NativeWindow>,
     filesystem: Arc<FileSystem>,
     pub(crate) graphics_state: GraphicsState,
 }
@@ -74,7 +86,7 @@ impl Graphics {
 }
 
 impl GraphicsState {
-    async fn new(window: Arc<Window>) -> color_eyre::Result<Self> {
+    async fn new(window: Arc<NativeWindow>) -> color_eyre::Result<Self> {
         let instance = wgpu::Instance::new(wgpu::InstanceDescriptor {
             backends: wgpu::Backends::all(),
             flags: wgpu::InstanceFlags::from_build_config(),
