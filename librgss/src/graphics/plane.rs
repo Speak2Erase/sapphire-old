@@ -16,3 +16,9 @@
 // along with sapphire.  If not, see <http://www.gnu.org/licenses/>.
 
 pub struct Plane {}
+
+pub(crate) struct PlaneInternal {}
+
+slotmap::new_key_type! {
+  pub(crate) struct PlaneKey;
+}

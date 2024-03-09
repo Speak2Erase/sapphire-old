@@ -9,6 +9,7 @@ gilrs = "0.10.4"
 # Graphics
 wgpu = "0.19.3"
 glyphon = "0.5.0"
+bytemuck = { version = "1.14.3", features = ["derive"] }
 # Asset loading
 image = "0.24.9"
 # Audio
@@ -25,7 +26,7 @@ camino = "1.1.6"
 # Error handling
 color-eyre = "0.6.2"
 thiserror = "1.0.57"
-
-bytemuck = { version = "1.14.3", features = ["derive"] }
+# Data structures
+slotmap = "1.0.7"
 
 [workspace.lints]

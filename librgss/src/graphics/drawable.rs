@@ -15,51 +15,58 @@
 // You should have received a copy of the GNU General Public License
 // along with sapphire.  If not, see <http://www.gnu.org/licenses/>.
 
-use std::sync::{Arc, Weak};
+use super::{
+    Graphics, PlaneInternal, PlaneKey, SpriteInternal, SpriteKey, TileKey, TilemapInternal,
+    ViewportInternal, ViewportKey, WindowInternal, WindowKey,
+};
 
-use crate::{Plane, Sprite, Tilemap, Viewport};
-
-use super::Window;
-
-// FIXME arc is pain. we should try and use an arena, if possible
-#[derive(Clone)]
-pub enum Drawable {
-    Plane(Arc<Plane>),
-    Sprite(Arc<Sprite>),
-    Tilemap(Arc<Tilemap>),
-    Viewport(Arc<Viewport>),
-    Window(Arc<Window>),
+#[derive(Clone, Copy)]
+pub enum DrawableRef {
+    Plane(PlaneKey),
+    Sprite(SpriteKey),
+    Tilemap(TileKey),
+    Viewport(ViewportKey),
+    Window(WindowKey),
 }
 
-#[derive(Clone)]
-pub enum DrawableWeak {
-    Plane(Weak<Plane>),
-    Sprite(Weak<Sprite>),
-    Tilemap(Weak<Tilemap>),
-    Viewport(Weak<Viewport>),
-    Window(Weak<Window>),
+pub enum Drawable<'res> {
+    Plane(&'res PlaneInternal),
+    Sprite(&'res SpriteInternal),
+    Tilemap(&'res TilemapInternal),
+    Viewport(&'res ViewportInternal),
+    Window(&'res WindowInternal),
 }
 
-impl From<&Drawable> for DrawableWeak {
-    fn from(value: &Drawable) -> Self {
-        match value {
-            Drawable::Plane(p) => DrawableWeak::Plane(Arc::downgrade(p)),
-            Drawable::Sprite(s) => DrawableWeak::Sprite(Arc::downgrade(s)),
-            Drawable::Tilemap(t) => DrawableWeak::Tilemap(Arc::downgrade(t)),
-            Drawable::Viewport(v) => DrawableWeak::Viewport(Arc::downgrade(v)),
-            Drawable::Window(w) => DrawableWeak::Window(Arc::downgrade(w)),
+pub enum DrawableMut<'res> {
+    Plane(&'res mut PlaneInternal),
+    Sprite(&'res mut SpriteInternal),
+    Tilemap(&'res mut TilemapInternal),
+    Viewport(&'res mut ViewportInternal),
+    Window(&'res mut WindowInternal),
+}
+
+impl DrawableRef {
+    pub fn fetch(self, graphics: &Graphics) -> Option<Drawable<'_>> {
+        match self {
+            DrawableRef::Plane(p) => graphics.arenas.plane.get(p).map(Drawable::Plane),
+            DrawableRef::Sprite(s) => graphics.arenas.sprite.get(s).map(Drawable::Sprite),
+            DrawableRef::Tilemap(t) => graphics.arenas.tilemap.get(t).map(Drawable::Tilemap),
+            DrawableRef::Viewport(v) => graphics.arenas.viewport.get(v).map(Drawable::Viewport),
+            DrawableRef::Window(w) => graphics.arenas.window.get(w).map(Drawable::Window),
         }
     }
-}
 
-impl DrawableWeak {
-    pub fn upgrade(&self) -> Option<Drawable> {
+    pub fn fetch_mut(self, graphics: &mut Graphics) -> Option<DrawableMut<'_>> {
         match self {
-            DrawableWeak::Plane(p) => p.upgrade().map(Drawable::Plane),
-            DrawableWeak::Sprite(s) => s.upgrade().map(Drawable::Sprite),
-            DrawableWeak::Tilemap(t) => t.upgrade().map(Drawable::Tilemap),
-            DrawableWeak::Viewport(v) => v.upgrade().map(Drawable::Viewport),
-            DrawableWeak::Window(w) => w.upgrade().map(Drawable::Window),
+            DrawableRef::Plane(p) => graphics.arenas.plane.get_mut(p).map(DrawableMut::Plane),
+            DrawableRef::Sprite(s) => graphics.arenas.sprite.get_mut(s).map(DrawableMut::Sprite),
+            DrawableRef::Tilemap(t) => graphics.arenas.tilemap.get_mut(t).map(DrawableMut::Tilemap),
+            DrawableRef::Viewport(v) => graphics
+                .arenas
+                .viewport
+                .get_mut(v)
+                .map(DrawableMut::Viewport),
+            DrawableRef::Window(w) => graphics.arenas.window.get_mut(w).map(DrawableMut::Window),
         }
     }
 }

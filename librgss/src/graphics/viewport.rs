@@ -15,55 +15,49 @@
 // You should have received a copy of the GNU General Public License
 // along with sapphire.  If not, see <http://www.gnu.org/licenses/>.
 
-use parking_lot::RwLock;
-
-use super::{drawable::DrawableWeak, ZList, Z};
+use super::{DrawableRef, ZList, Z};
 use crate::{Graphics, Rect};
 
-pub struct Viewport {
-    // TODO see if we can replace inner with something else
-    pub(crate) inner: RwLock<Inner>,
+pub struct Viewport {}
+
+pub(crate) struct ViewportInternal {
+    pub rect: Rect,
+    pub z: Z,
+    pub z_list: ZList<DrawableRef>,
 }
 
 pub(crate) struct GlobalViewport {
-    list: RwLock<DrawableWeak>,
+    pub list: ZList<DrawableRef>,
 }
 
-pub(crate) struct Inner {
-    pub(crate) rect: Rect,
-    pub(crate) z: Z,
-    pub(crate) z_list: ZList<DrawableWeak>,
+slotmap::new_key_type! {
+  pub(crate) struct ViewportKey;
 }
 
-impl Viewport {
-    pub(crate) fn insert(&self, z: Z, item: DrawableWeak) {
-        let mut inner = self.inner.write();
-
-        inner.z_list.insert(z, item)
+impl ViewportInternal {
+    pub(crate) fn insert(&mut self, z: Z, item: DrawableRef) {
+        self.z_list.insert(z, item)
     }
 
-    pub(crate) fn remove(&self, z: Z) -> Option<DrawableWeak> {
-        let mut inner = self.inner.write();
-
-        inner.z_list.remove(z)
+    pub(crate) fn remove(&mut self, z: Z) -> Option<DrawableRef> {
+        self.z_list.remove(z)
     }
 
-    pub(crate) fn update_z(&self, old_z: Z, new_z: Z) {
+    pub(crate) fn update_z(&mut self, old_z: Z, new_z: Z) {
         if let Some(item) = self.remove(old_z) {
             self.insert(new_z, item)
         }
     }
 
-    pub(crate) fn swap(&self, other: &Self, z: Z) {
+    pub(crate) fn swap(&mut self, other: &mut Self, z: Z) {
         if let Some(item) = self.remove(z) {
             other.insert(z, item)
         }
     }
 
-    pub(crate) fn draw(&self, graphics: &Graphics) {
-        let mut inner = self.inner.write();
-        inner.z_list.retain(|_, weak| {
-            let Some(drawable) = weak.upgrade() else {
+    pub(crate) fn draw(&mut self, graphics: &Graphics) {
+        self.z_list.retain(|_, drawable| {
+            let Some(drawable) = drawable.fetch(graphics) else {
                 return false;
             };
 

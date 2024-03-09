@@ -16,3 +16,9 @@
 // along with sapphire.  If not, see <http://www.gnu.org/licenses/>.
 
 pub struct Tilemap {}
+
+pub(crate) struct TilemapInternal {}
+
+slotmap::new_key_type! {
+  pub(crate) struct TileKey;
+}

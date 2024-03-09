@@ -16,6 +16,7 @@
 // along with Sapphire.  If not, see <http://www.gnu.org/licenses/>.
 
 use color_eyre::eyre::OptionExt;
+use slotmap::SlotMap;
 use std::sync::Arc;
 use winit::window::Window as NativeWindow;
 
@@ -25,22 +26,27 @@ mod bitmap;
 pub use bitmap::Bitmap;
 
 mod drawable;
-use drawable::Drawable;
+use drawable::{Drawable, DrawableMut, DrawableRef};
 
 mod sprite;
 pub use sprite::Sprite;
+use sprite::{SpriteInternal, SpriteKey};
 
 mod plane;
 pub use plane::Plane;
+use plane::{PlaneInternal, PlaneKey};
 
 mod tilemap;
 pub use tilemap::Tilemap;
+use tilemap::{TileKey, TilemapInternal};
 
 mod viewport;
 pub use viewport::Viewport;
+use viewport::{ViewportInternal, ViewportKey};
 
 mod window;
 pub use window::Window;
+use window::{WindowInternal, WindowKey};
 
 mod z;
 use z::{ZList, Z};
@@ -49,6 +55,17 @@ pub struct Graphics {
     window: Arc<NativeWindow>,
     filesystem: Arc<FileSystem>,
     pub(crate) graphics_state: GraphicsState,
+    pub(crate) arenas: Arenas,
+}
+
+#[derive(Default)]
+pub(crate) struct Arenas {
+    // FIXME use generational arenas instead to avoid aba
+    pub sprite: SlotMap<SpriteKey, SpriteInternal>,
+    pub plane: SlotMap<PlaneKey, PlaneInternal>,
+    pub tilemap: SlotMap<TileKey, TilemapInternal>,
+    pub viewport: SlotMap<ViewportKey, ViewportInternal>,
+    pub window: SlotMap<WindowKey, WindowInternal>,
 }
 
 pub(crate) struct GraphicsState {
@@ -71,11 +88,13 @@ impl Graphics {
             .build(&event_loop.event_loop)
             .map(Arc::new)?;
         let graphics_state = GraphicsState::new(window.clone()).await?;
+        let arenas = Arenas::default();
 
         Ok(Self {
             window,
             filesystem,
             graphics_state,
+            arenas,
         })
     }
 

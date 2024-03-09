@@ -24,6 +24,8 @@ arc-swap.workspace = true
 
 bytemuck.workspace = true
 
+slotmap.workspace = true
+
 [features]
 # FIXME proper tilemap switching
 rgss2 = []
