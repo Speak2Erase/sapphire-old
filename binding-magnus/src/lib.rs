@@ -54,6 +54,7 @@ pub fn start(
             // stop audio processing
             // FIXME should we do this here, or in main.rs?
             audio::get_audio().read().stop_processing();
+
             result
         })
         .expect("failed to start ruby thread")
@@ -83,8 +84,13 @@ unsafe fn run_ruby_thread(
     // if the event loop has exited, the next call to Input::update will raise SystemExit, so this loop will exit
     for script in scripts {
         ruby.script(script.name);
-        ruby.eval::<magnus::Value>(&script.script_text)
-            .map_err(error::magnus_to_eyre)?;
+        let result = ruby.eval::<magnus::Value>(&script.script_text);
+
+        if let Err(error) = result {
+            if !error.is_kind_of(ruby.exception_system_exit()) {
+                return Err(error::magnus_to_eyre(error));
+            }
+        }
     }
 
     Ok(())

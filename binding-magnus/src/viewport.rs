@@ -17,6 +17,22 @@
 
 use magnus::{method, Module};
 
+#[magnus::wrap(class = "Viewport", free_immediately, size)]
+#[derive(Clone, Copy)]
+pub struct Viewport(librgss::Viewport);
+
+impl From<Viewport> for librgss::Viewport {
+    fn from(val: Viewport) -> Self {
+        val.0
+    }
+}
+
+impl From<librgss::Viewport> for Viewport {
+    fn from(val: librgss::Viewport) -> Self {
+        Viewport(val)
+    }
+}
+
 pub fn bind(ruby: &magnus::Ruby) -> Result<(), magnus::Error> {
     let class = ruby.define_class("Viewport", ruby.class_object())?;
 

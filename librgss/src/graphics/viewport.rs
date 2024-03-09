@@ -18,7 +18,10 @@
 use super::{DrawableRef, ZList, Z};
 use crate::{Graphics, Rect};
 
-pub struct Viewport {}
+#[derive(Clone, Copy)]
+pub struct Viewport {
+    pub(crate) key: ViewportKey,
+}
 
 pub(crate) struct ViewportInternal {
     pub rect: Rect,
@@ -26,8 +29,9 @@ pub(crate) struct ViewportInternal {
     pub z_list: ZList<DrawableRef>,
 }
 
+#[derive(Default)]
 pub(crate) struct GlobalViewport {
-    pub list: ZList<DrawableRef>,
+    pub z_list: ZList<DrawableRef>,
 }
 
 slotmap::new_key_type! {

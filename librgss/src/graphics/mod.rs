@@ -42,7 +42,7 @@ use tilemap::{TileKey, TilemapInternal};
 
 mod viewport;
 pub use viewport::Viewport;
-use viewport::{ViewportInternal, ViewportKey};
+use viewport::{GlobalViewport, ViewportInternal, ViewportKey};
 
 mod window;
 pub use window::Window;
@@ -56,6 +56,7 @@ pub struct Graphics {
     filesystem: Arc<FileSystem>,
     pub(crate) graphics_state: GraphicsState,
     pub(crate) arenas: Arenas,
+    pub(crate) global_viewport: GlobalViewport,
 }
 
 #[derive(Default)]
@@ -88,13 +89,16 @@ impl Graphics {
             .build(&event_loop.event_loop)
             .map(Arc::new)?;
         let graphics_state = GraphicsState::new(window.clone()).await?;
+
         let arenas = Arenas::default();
+        let global_viewport = GlobalViewport::default();
 
         Ok(Self {
             window,
             filesystem,
             graphics_state,
             arenas,
+            global_viewport,
         })
     }
 
@@ -102,6 +106,13 @@ impl Graphics {
     pub fn set_window_title(&self, title: &str) {
         self.window.set_title(title)
     }
+}
+
+impl Arenas {
+    const WINDOW_MISSING: &'static str =
+        "window is missing from graphics arena! please report you you encountered this";
+    const VIEWPORT_MISSING: &'static str =
+        "viewport is missing from graphics arena! please report you you encountered this";
 }
 
 impl GraphicsState {

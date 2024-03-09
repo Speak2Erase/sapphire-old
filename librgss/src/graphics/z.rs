@@ -29,6 +29,14 @@ pub struct ZList<T> {
     tree_map: BTreeMap<Z, T>,
 }
 
+impl<T> Default for ZList<T> {
+    fn default() -> Self {
+        Self {
+            tree_map: BTreeMap::new(),
+        }
+    }
+}
+
 impl PartialOrd for Z {
     fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
         Some(self.cmp(other))

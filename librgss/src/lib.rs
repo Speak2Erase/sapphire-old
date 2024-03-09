@@ -14,7 +14,7 @@ mod font;
 pub use font::{Font, Fonts};
 
 pub mod graphics;
-pub use graphics::{Bitmap, Graphics, Plane, Sprite, Tilemap, Viewport};
+pub use graphics::{Bitmap, Graphics, Plane, Sprite, Tilemap, Viewport, Window};
 
 mod input;
 pub use input::Input;
