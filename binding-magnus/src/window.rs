@@ -15,7 +15,7 @@
 // You should have received a copy of the GNU General Public License
 // along with sapphire.  If not, see <http://www.gnu.org/licenses/>.
 
-use magnus::{function, method, Module, Object};
+use magnus::{function, method, typed_data::Obj, Class, Module, Object};
 
 use crate::{bitmap::Bitmap, graphics::get_graphics, viewport::Viewport};
 
@@ -35,14 +35,15 @@ impl From<librgss::Window> for Window {
     }
 }
 
-fn window_new(args: &[magnus::Value]) -> Result<Window, magnus::Error> {
+fn window_new(class: magnus::RClass, args: &[magnus::Value]) -> Result<Obj<Window>, magnus::Error> {
     let args = magnus::scan_args::scan_args::<(), _, (), (), (), ()>(args)?;
     let (viewport,): (Option<&Viewport>,) = args.optional;
 
     let mut graphics = get_graphics().write();
     let window = librgss::Window::new(&mut graphics, viewport.copied().map(Into::into));
 
-    Ok(Window(window))
+    let wrapped = Obj::wrap_as(Window(window), class);
+    Ok(wrapped)
 }
 
 fn get_x(window: &Window) -> i32 {
@@ -67,7 +68,11 @@ fn update(window: &Window) {}
 pub fn bind(ruby: &magnus::Ruby) -> Result<(), magnus::Error> {
     let class = ruby.define_class("Window", ruby.class_object())?;
 
-    class.define_singleton_method("new", function!(window_new, -1))?;
+    class.define_singleton_method("new", method!(window_new, -1))?;
+    class.define_singleton_method(
+        "inherited",
+        function!(magnus::RClass::undef_default_alloc_func, 1),
+    )?;
 
     class.define_method("x", method!(get_x, 0))?;
     class.define_method("x=", method!(set_x, 1))?;

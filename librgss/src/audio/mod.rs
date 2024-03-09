@@ -29,6 +29,7 @@ pub struct Audio {
     sender: Sender<Event>,
 }
 
+#[derive(Debug)]
 enum Event {
     PlayBGM(PlayArgs),
     StopBGM,
@@ -44,6 +45,7 @@ enum Event {
     Exit,
 }
 
+#[derive(Debug)]
 struct PlayArgs {
     path: Utf8PathBuf,
     pitch: u32,
@@ -57,21 +59,47 @@ fn audio_thread_fun(
 ) -> color_eyre::Result<()> {
     let (output_stream, output_stream_handle) = rodio::OutputStream::try_default()?;
 
+    let mut bgm_sink = None;
+    let mut se_sink = None;
+
     // TODO extract while loop body into a function to process events
     // TODO gradual event timeout (have infinite timeout when audio processing effects are not required)
     while let Ok(event) = receiver.recv() {
+        println!("{:?}", event);
         match event {
-            Event::PlayBGM(_) => todo!(),
-            Event::StopBGM => todo!(),
-            Event::FadeBGM(_) => todo!(),
-            Event::PlayBGS(_) => todo!(),
-            Event::StopBGS => todo!(),
-            Event::FadeBGS(_) => todo!(),
-            Event::PlayME(_) => todo!(),
-            Event::StopME => todo!(),
-            Event::FadeME(_) => todo!(),
-            Event::PlaySE(_) => todo!(),
-            Event::StopSE => todo!(),
+            Event::PlayBGM(args) => {
+                let sink = bgm_sink
+                    .get_or_insert_with(|| rodio::Sink::try_new(&output_stream_handle).unwrap());
+
+                let file = filesystem.read_file(args.path).unwrap();
+                let decoder = rodio::Decoder::new_looped(file).unwrap();
+                sink.append(decoder);
+                sink.set_volume(args.volume as f32 / 100.);
+                sink.set_speed(args.pitch as f32 / 100.);
+
+                sink.play();
+            }
+            Event::StopBGM => {}
+            Event::FadeBGM(_) => {}
+            Event::PlayBGS(_) => {}
+            Event::StopBGS => {}
+            Event::FadeBGS(_) => {}
+            Event::PlayME(_) => {}
+            Event::StopME => {}
+            Event::FadeME(_) => {}
+            Event::PlaySE(args) => {
+                let sink = se_sink
+                    .get_or_insert_with(|| rodio::Sink::try_new(&output_stream_handle).unwrap());
+
+                let file = filesystem.read_file(args.path).unwrap();
+                let decoder = rodio::Decoder::new(file).unwrap();
+                sink.append(decoder);
+                sink.set_volume(args.volume as f32 / 100.);
+                sink.set_speed(args.pitch as f32 / 100.);
+
+                sink.play();
+            }
+            Event::StopSE => {}
             Event::Exit => return Ok(()),
         }
     }

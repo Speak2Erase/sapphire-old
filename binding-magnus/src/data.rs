@@ -15,12 +15,12 @@
 // You should have received a copy of the GNU General Public License
 // along with sapphire.  If not, see <http://www.gnu.org/licenses/>.
 
-use magnus::{function, Object, RString, Value};
+use magnus::{function, method, typed_data::Obj, Class, Object, RString, Value};
 
 #[magnus::wrap(class = "Color", size, free_immediately)]
 pub struct Color(pub librgss::Color);
 
-fn color_new(args: &[Value]) -> Result<Color, magnus::Error> {
+fn color_new(class: magnus::RClass, args: &[Value]) -> Result<Obj<Color>, magnus::Error> {
     let args = magnus::scan_args::scan_args::<_, _, (), (), (), ()>(args)?;
 
     let (red, green, blue) = args.required;
@@ -33,7 +33,8 @@ fn color_new(args: &[Value]) -> Result<Color, magnus::Error> {
         alpha: alpha.unwrap_or(255.0),
     };
 
-    Ok(Color(color))
+    let wrapped = Obj::wrap_as(Color(color), class);
+    Ok(wrapped)
 }
 
 fn deserialize_color(bytes: RString) -> Color {
@@ -48,7 +49,7 @@ fn deserialize_color(bytes: RString) -> Color {
 #[magnus::wrap(class = "Tone", size, free_immediately)]
 pub struct Tone(pub librgss::Tone);
 
-fn tone_new(args: &[Value]) -> Result<Tone, magnus::Error> {
+fn tone_new(class: magnus::RClass, args: &[Value]) -> Result<Obj<Tone>, magnus::Error> {
     let args = magnus::scan_args::scan_args::<_, _, (), (), (), ()>(args)?;
 
     let (red, green, blue) = args.required;
@@ -61,7 +62,8 @@ fn tone_new(args: &[Value]) -> Result<Tone, magnus::Error> {
         grey: grey.unwrap_or(0.0),
     };
 
-    Ok(Tone(tone))
+    let wrapped = Obj::wrap_as(Tone(tone), class);
+    Ok(wrapped)
 }
 
 fn deserialize_tone(bytes: RString) -> Tone {
@@ -96,12 +98,20 @@ fn deserialize_table(bytes: RString) -> Table {
 pub fn bind(ruby: &magnus::Ruby) -> Result<(), magnus::Error> {
     let color = ruby.define_class("Color", ruby.class_object())?;
 
-    color.define_singleton_method("new", function!(color_new, -1))?;
+    color.define_singleton_method("new", method!(color_new, -1))?;
+    color.define_singleton_method(
+        "inherited",
+        function!(magnus::RClass::undef_default_alloc_func, 1),
+    )?;
     color.define_singleton_method("_load", function!(deserialize_color, 1))?;
 
     let tone = ruby.define_class("Tone", ruby.class_object())?;
 
-    tone.define_singleton_method("new", function!(tone_new, -1))?;
+    tone.define_singleton_method("new", method!(tone_new, -1))?;
+    tone.define_singleton_method(
+        "inherited",
+        function!(magnus::RClass::undef_default_alloc_func, 1),
+    )?;
     tone.define_singleton_method("_load", function!(deserialize_tone, 1))?;
 
     let table = ruby.define_class("Table", ruby.class_object())?;

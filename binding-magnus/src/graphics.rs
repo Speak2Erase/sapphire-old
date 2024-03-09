@@ -31,6 +31,8 @@ pub fn get_graphics() -> &'static RwLock<librgss::Graphics> {
 
 fn update() {
     let graphics = get_graphics().write();
+
+    std::thread::sleep(std::time::Duration::from_millis(11));
 }
 
 fn fullscreen() -> bool {

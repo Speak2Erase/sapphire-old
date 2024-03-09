@@ -15,7 +15,7 @@
 // You should have received a copy of the GNU General Public License
 // along with sapphire.  If not, see <http://www.gnu.org/licenses/>.
 
-use magnus::{function, method, Module, Object, TryConvert, Value};
+use magnus::{function, method, typed_data::Obj, Class, Module, Object, TryConvert, Value};
 use std::sync::Arc;
 
 use crate::graphics::get_graphics;
@@ -23,11 +23,12 @@ use crate::graphics::get_graphics;
 #[magnus::wrap(class = "Bitmap", free_immediately, size)]
 pub struct Bitmap(Arc<librgss::Bitmap>);
 
-fn new(args: &[Value]) -> Result<Bitmap, magnus::Error> {
+// FIXME allow bitmap subclassing
+fn bitmap_new(class: magnus::RClass, args: &[Value]) -> Result<Obj<Bitmap>, magnus::Error> {
     magnus::scan_args::check_arity(args.len(), 1..=2)?;
 
     let graphics = get_graphics().read();
-    Ok(match args {
+    let bitmap = match args {
         [path] => {
             let path = String::try_convert(*path)?;
 
@@ -42,7 +43,10 @@ fn new(args: &[Value]) -> Result<Bitmap, magnus::Error> {
             Bitmap(bitmap)
         }
         _ => unreachable!(),
-    })
+    };
+
+    let wrapped = Obj::wrap_as(bitmap, class);
+    Ok(wrapped)
 }
 
 fn disposed(bitmap: &Bitmap) -> bool {
@@ -52,7 +56,11 @@ fn disposed(bitmap: &Bitmap) -> bool {
 pub fn bind(ruby: &magnus::Ruby) -> Result<(), magnus::Error> {
     let class = ruby.define_class("Bitmap", ruby.class_object())?;
 
-    class.define_singleton_method("new", function!(new, -1))?;
+    class.define_singleton_method("new", method!(bitmap_new, -1))?;
+    class.define_singleton_method(
+        "inherited",
+        function!(magnus::RClass::undef_default_alloc_func, 1),
+    )?;
 
     class.define_method("disposed?", method!(disposed, 0))?;
 
