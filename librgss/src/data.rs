@@ -43,6 +43,17 @@ pub struct Rect {
     pub height: u32,
 }
 
+impl Rect {
+    pub fn new(x: i32, y: i32, width: u32, height: u32) -> Self {
+        Self {
+            x,
+            y,
+            width,
+            height,
+        }
+    }
+}
+
 impl Color {
     pub const WHITE: Self = Self {
         red: 255.0,

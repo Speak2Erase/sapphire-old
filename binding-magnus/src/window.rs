@@ -16,123 +16,154 @@
 // along with sapphire.  If not, see <http://www.gnu.org/licenses/>.
 
 use magnus::{function, method, typed_data::Obj, Class, Module, Object};
+use std::cell::Cell;
 
 use crate::{bitmap::Bitmap, graphics::get_graphics, viewport::Viewport};
 
 #[magnus::wrap(class = "Window", free_immediately, size)]
-#[derive(Clone, Copy)]
-pub struct Window(librgss::Window);
+pub struct Window(Cell<librgss::Window>);
 
-impl From<Window> for librgss::Window {
-    fn from(val: Window) -> Self {
-        val.0
+impl Default for Window {
+    fn default() -> Self {
+        Self(Cell::new(librgss::Window::null()))
     }
 }
 
-impl From<librgss::Window> for Window {
-    fn from(val: librgss::Window) -> Self {
-        Window(val)
+impl Window {
+    fn initialize(rb_self: Obj<Window>, args: &[magnus::Value]) -> Result<(), magnus::Error> {
+        let args = magnus::scan_args::scan_args::<(), _, (), (), (), ()>(args)?;
+        let (viewport,): (Option<&Viewport>,) = args.optional;
+
+        let mut graphics = get_graphics().write();
+        let window = librgss::Window::new(&mut graphics, viewport.copied().map(Into::into));
+        rb_self.0.set(window);
+
+        Ok(())
+    }
+
+    fn x(rb_self: Obj<Window>) -> Result<i32, magnus::Error> {
+        let graphics = get_graphics().read();
+        let data = rb_self.get_data(&graphics)?;
+        Ok(data.rect.x)
+    }
+
+    fn set_x(rb_self: Obj<Window>, x: i32) -> Result<(), magnus::Error> {
+        let mut graphics = get_graphics().write();
+        let data = rb_self.get_data_mut(&mut graphics)?;
+        data.rect.x = x;
+        Ok(())
+    }
+
+    fn y(rb_self: Obj<Window>) -> Result<i32, magnus::Error> {
+        let graphics = get_graphics().read();
+        let data = rb_self.get_data(&graphics)?;
+        Ok(data.rect.y)
+    }
+
+    fn set_y(rb_self: Obj<Window>, y: i32) -> Result<(), magnus::Error> {
+        let mut graphics = get_graphics().write();
+        let data = rb_self.get_data_mut(&mut graphics)?;
+        data.rect.y = y;
+        Ok(())
+    }
+
+    fn width(rb_self: Obj<Window>) -> Result<u32, magnus::Error> {
+        let graphics = get_graphics().read();
+        let data = rb_self.get_data(&graphics)?;
+        Ok(data.rect.width)
+    }
+
+    fn set_width(rb_self: Obj<Window>, width: u32) -> Result<(), magnus::Error> {
+        let mut graphics = get_graphics().write();
+        let data = rb_self.get_data_mut(&mut graphics)?;
+        data.rect.width = width;
+        Ok(())
+    }
+
+    fn height(rb_self: Obj<Window>) -> Result<u32, magnus::Error> {
+        let graphics = get_graphics().read();
+        let data = rb_self.get_data(&graphics)?;
+        Ok(data.rect.height)
+    }
+
+    fn set_height(rb_self: Obj<Window>, height: u32) -> Result<(), magnus::Error> {
+        let mut graphics = get_graphics().write();
+        let data = rb_self.get_data_mut(&mut graphics)?;
+        data.rect.height = height;
+        Ok(())
+    }
+
+    fn z(rb_self: Obj<Window>) -> Result<i32, magnus::Error> {
+        let graphics = get_graphics().read();
+        let window = rb_self.0.get();
+        Ok(window.z(&graphics))
+    }
+
+    fn set_z(rb_self: Obj<Window>, z: i32) -> Result<(), magnus::Error> {
+        let mut graphics = get_graphics().write();
+        let window = rb_self.0.get();
+        window.set_z(&mut graphics, z);
+        Ok(())
     }
 }
 
-fn window_new(class: magnus::RClass, args: &[magnus::Value]) -> Result<Obj<Window>, magnus::Error> {
-    let args = magnus::scan_args::scan_args::<(), _, (), (), (), ()>(args)?;
-    let (viewport,): (Option<&Viewport>,) = args.optional;
+impl Window {
+    fn get_data<'g>(
+        &self,
+        graphics: &'g librgss::Graphics,
+    ) -> Result<&'g librgss::graphics::WindowData, magnus::Error> {
+        let window = self.0.get();
+        window.get_data(graphics).ok_or_else(|| {
+            magnus::Error::new(
+                magnus::exception::runtime_error(),
+                "invalid window (missing call to super?)",
+            )
+        })
+    }
 
-    let mut graphics = get_graphics().write();
-    let window = librgss::Window::new(&mut graphics, viewport.copied().map(Into::into));
-
-    let wrapped = Obj::wrap_as(Window(window), class);
-    Ok(wrapped)
+    fn get_data_mut<'g>(
+        &self,
+        graphics: &'g mut librgss::Graphics,
+    ) -> Result<&'g mut librgss::graphics::WindowData, magnus::Error> {
+        let window = self.0.get();
+        window.get_data_mut(graphics).ok_or_else(|| {
+            magnus::Error::new(
+                magnus::exception::runtime_error(),
+                "invalid window (missing call to super?)",
+            )
+        })
+    }
 }
 
-fn get_x(window: &Window) -> i32 {
-    let graphics = get_graphics().read();
-    let rect = window.0.rect(&graphics);
-    rect.x
+fn null_getter(rb_self: magnus::Value) -> magnus::value::Qnil {
+    magnus::value::qnil()
 }
 
-fn set_x(window: &Window, x: i32) {
-    let mut graphics = get_graphics().write();
-    window.0.rect_mut(&mut graphics).x = x;
-}
-
-fn get_y(window: &Window) -> i32 {
-    let graphics = get_graphics().read();
-    let rect = window.0.rect(&graphics);
-    rect.y
-}
-
-fn set_y(window: &Window, y: i32) {
-    let mut graphics = get_graphics().write();
-    window.0.rect_mut(&mut graphics).y = y;
-}
-
-fn get_width(window: &Window) -> u32 {
-    let graphics = get_graphics().read();
-    let rect = window.0.rect(&graphics);
-    rect.width
-}
-
-fn set_width(window: &Window, width: u32) {
-    let mut graphics = get_graphics().write();
-    window.0.rect_mut(&mut graphics).width = width;
-}
-
-fn get_height(window: &Window) -> u32 {
-    let graphics = get_graphics().read();
-    let rect = window.0.rect(&graphics);
-    rect.height
-}
-
-fn set_height(window: &Window, height: u32) {
-    let mut graphics = get_graphics().write();
-    window.0.rect_mut(&mut graphics).height = height;
-}
-
-fn get_active(window: &Window) -> bool {
-    let graphics = get_graphics().read();
-    *window.0.active(&graphics)
-}
-
-fn set_active(window: &Window, active: bool) {
-    let mut graphics = get_graphics().write();
-    *window.0.active_mut(&mut graphics) = active;
-}
-
-fn windowskin(rb_self: magnus::Value) -> Bitmap {
-    todo!()
-}
-
-fn set_windowskin(rb_self: magnus::Value, bitmap: &Bitmap) {}
-
-fn update(window: &Window) {}
+fn null_setter(rb_self: magnus::Value, _: magnus::Value) {}
 
 pub fn bind(ruby: &magnus::Ruby) -> Result<(), magnus::Error> {
     let class = ruby.define_class("Window", ruby.class_object())?;
 
-    class.define_singleton_method("new", method!(window_new, -1))?;
-    class.define_singleton_method(
-        "inherited",
-        function!(magnus::RClass::undef_default_alloc_func, 1),
-    )?;
+    class.define_alloc_func::<Window>();
+    class.define_method("initialize", method!(Window::initialize, -1))?;
 
-    class.define_method("x", method!(get_x, 0))?;
-    class.define_method("x=", method!(set_x, 1))?;
-    class.define_method("y", method!(get_y, 0))?;
-    class.define_method("y=", method!(set_y, 1))?;
-    class.define_method("width", method!(get_width, 0))?;
-    class.define_method("width=", method!(set_width, 1))?;
-    class.define_method("height", method!(get_height, 0))?;
-    class.define_method("height=", method!(set_height, 1))?;
+    class.define_method("x", method!(Window::x, 0))?;
+    class.define_method("x=", method!(Window::set_x, 1))?;
 
-    class.define_method("active", method!(get_active, 0))?;
-    class.define_method("active=", method!(set_active, 1))?;
+    class.define_method("y", method!(Window::y, 0))?;
+    class.define_method("y=", method!(Window::set_y, 1))?;
 
-    class.define_method("windowskin", method!(windowskin, 0))?;
-    class.define_method("windowskin=", method!(set_windowskin, 1))?;
+    class.define_method("width", method!(Window::width, 0))?;
+    class.define_method("width=", method!(Window::set_width, 1))?;
 
-    class.define_method("update", method!(update, 0))?;
+    class.define_method("height", method!(Window::height, 0))?;
+    class.define_method("height=", method!(Window::set_height, 1))?;
+
+    class.define_method("z", method!(Window::z, 0))?;
+    class.define_method("z=", method!(Window::set_z, 1))?;
+
+    class.define_method("windowskin", method!(null_getter, 0))?;
+    class.define_method("windowskin=", method!(null_setter, 1))?;
 
     Ok(())
 }

@@ -17,7 +17,7 @@
 
 use super::{
     Graphics, PlaneInternal, PlaneKey, SpriteInternal, SpriteKey, TileKey, TilemapInternal,
-    ViewportInternal, ViewportKey, WindowInternal, WindowKey,
+    ViewportInternal, ViewportKey, WindowData, WindowKey,
 };
 
 #[derive(Clone, Copy)]
@@ -34,7 +34,7 @@ pub enum Drawable<'res> {
     Sprite(&'res SpriteInternal),
     Tilemap(&'res TilemapInternal),
     Viewport(&'res ViewportInternal),
-    Window(&'res WindowInternal),
+    Window(&'res WindowData),
 }
 
 pub enum DrawableMut<'res> {
@@ -42,7 +42,7 @@ pub enum DrawableMut<'res> {
     Sprite(&'res mut SpriteInternal),
     Tilemap(&'res mut TilemapInternal),
     Viewport(&'res mut ViewportInternal),
-    Window(&'res mut WindowInternal),
+    Window(&'res mut WindowData),
 }
 
 impl DrawableRef {

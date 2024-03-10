@@ -20,7 +20,7 @@ use std::time::Instant;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct Z {
-    pub z: i32,
+    value: i32,
     creation_time: Instant,
 }
 
@@ -45,8 +45,8 @@ impl PartialOrd for Z {
 
 impl Ord for Z {
     fn cmp(&self, other: &Self) -> std::cmp::Ordering {
-        self.z
-            .cmp(&other.z)
+        self.value
+            .cmp(&other.value)
             .then(self.creation_time.cmp(&other.creation_time))
     }
 }
@@ -54,9 +54,17 @@ impl Ord for Z {
 impl Z {
     pub fn new(z: i32) -> Self {
         Self {
-            z,
+            value: z,
             creation_time: Instant::now(),
         }
+    }
+
+    pub fn value(self) -> i32 {
+        self.value
+    }
+
+    pub fn update_value(self, value: i32) -> Self {
+        Self { value, ..self }
     }
 }
 
@@ -70,6 +78,11 @@ impl<T> ZList<T> {
     pub fn insert(&mut self, z: Z, value: T) {
         let old = self.tree_map.insert(z, value);
         debug_assert!(old.is_none())
+    }
+
+    pub fn re_insert(&mut self, old_z: Z, new_z: Z) {
+        let value = self.remove(old_z).expect("invalid z");
+        self.insert(new_z, value)
     }
 
     pub fn get(&self, z: Z) -> Option<&T> {

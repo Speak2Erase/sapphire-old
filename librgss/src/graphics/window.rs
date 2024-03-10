@@ -20,16 +20,17 @@ use slotmap::Key;
 use super::{Arenas, DrawableRef, Graphics, Viewport, Z};
 use crate::Rect;
 
-#[derive(Clone, Copy, Default)]
+#[derive(Clone, Copy)]
 pub struct Window {
     key: WindowKey,
-    viewport: Option<Viewport>,
 }
 
-pub(crate) struct WindowInternal {
-    rect: Rect,
-    cursor_rect: Rect,
-    active: bool,
+pub struct WindowData {
+    pub rect: Rect,
+    pub cursor_rect: Rect,
+    pub active: bool,
+    viewport: Viewport,
+    z: Z,
 }
 
 slotmap::new_key_type! {
@@ -37,71 +38,93 @@ slotmap::new_key_type! {
 }
 
 impl Window {
-    fn get_internal<'g>(&self, graphics: &'g Graphics) -> &'g WindowInternal {
-        graphics
-            .arenas
-            .window
-            .get(self.key)
-            .expect(Arenas::WINDOW_MISSING)
-    }
-
-    fn get_internal_mut<'g>(&self, graphics: &'g mut Graphics) -> &'g mut WindowInternal {
-        graphics
-            .arenas
-            .window
-            .get_mut(self.key)
-            .expect(Arenas::WINDOW_MISSING)
-    }
-}
-
-impl Window {
     pub fn new(graphics: &mut Graphics, viewport: Option<Viewport>) -> Self {
-        let internal = WindowInternal {
+        let viewport = viewport.unwrap_or(graphics.global_viewport);
+        let z = Z::new(0);
+
+        let internal = WindowData {
             rect: Rect::default(),
             cursor_rect: Rect::default(),
             active: false,
+            viewport,
+            z,
         };
 
+        let viewport = graphics
+            .arenas
+            .viewport
+            .get_mut(viewport.key)
+            .expect(Arenas::VIEWPORT_MISSING);
+
         let key = graphics.arenas.window.insert(internal);
-        let z = Z::new(0);
-
         let drawable = DrawableRef::Window(key);
+        viewport.z_list.insert(z, drawable);
 
-        if let Some(viewport) = viewport {
-            let viewport = graphics
-                .arenas
-                .viewport
-                .get_mut(viewport.key)
-                .expect(Arenas::VIEWPORT_MISSING);
-            viewport.z_list.insert(z, drawable);
-        } else {
-            graphics.global_viewport.z_list.insert(z, drawable)
+        Self { key }
+    }
+
+    pub fn null() -> Self {
+        Self {
+            key: WindowKey::null(),
+        }
+    }
+
+    pub fn set_viewport(&mut self, graphics: &mut Graphics, viewport: Option<Viewport>) {
+        let internal = graphics
+            .arenas
+            .window
+            .get_mut(self.key)
+            .expect(Arenas::WINDOW_MISSING);
+        let new_viewport = viewport.unwrap_or(graphics.global_viewport);
+
+        // viewports are identical, no need to do any work
+        if internal.viewport == new_viewport {
+            return;
         }
 
-        Self { key, viewport }
+        let [current_viewport, new_viewport] = graphics
+            .arenas
+            .viewport
+            .get_disjoint_mut([internal.viewport.key, new_viewport.key])
+            .expect(Arenas::VIEWPORT_MISSING);
+        new_viewport.swap(current_viewport, internal.z);
     }
 
-    pub fn rect<'g>(&self, graphics: &'g Graphics) -> &'g Rect {
-        &self.get_internal(graphics).rect
+    pub fn z(&self, graphics: &Graphics) -> i32 {
+        let internal = graphics
+            .arenas
+            .window
+            .get(self.key)
+            .expect(Arenas::WINDOW_MISSING);
+        internal.z.value()
     }
 
-    pub fn rect_mut<'g>(&self, graphics: &'g mut Graphics) -> &'g mut Rect {
-        &mut self.get_internal_mut(graphics).rect
+    pub fn set_z(&self, graphics: &mut Graphics, value: i32) {
+        let internal = graphics
+            .arenas
+            .window
+            .get_mut(self.key)
+            .expect(Arenas::WINDOW_MISSING);
+
+        if internal.z.value() == value {
+            return;
+        }
+
+        let viewport = graphics
+            .arenas
+            .viewport
+            .get_mut(internal.viewport.key)
+            .expect(Arenas::VIEWPORT_MISSING);
+        viewport
+            .z_list
+            .re_insert(internal.z, internal.z.update_value(value))
     }
 
-    pub fn cursor_rect<'g>(&self, graphics: &'g Graphics) -> &'g Rect {
-        &self.get_internal(graphics).rect
+    pub fn get_data<'g>(&self, graphics: &'g Graphics) -> Option<&'g WindowData> {
+        graphics.arenas.window.get(self.key)
     }
 
-    pub fn cursor_rect_mut<'g>(&self, graphics: &'g mut Graphics) -> &'g mut Rect {
-        &mut self.get_internal_mut(graphics).rect
-    }
-
-    pub fn active<'g>(&self, graphics: &'g Graphics) -> &'g bool {
-        &self.get_internal(graphics).active
-    }
-
-    pub fn active_mut<'g>(&self, graphics: &'g mut Graphics) -> &'g mut bool {
-        &mut self.get_internal_mut(graphics).active
+    pub fn get_data_mut<'g>(&self, graphics: &'g mut Graphics) -> Option<&'g mut WindowData> {
+        graphics.arenas.window.get_mut(self.key)
     }
 }

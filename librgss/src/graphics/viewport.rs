@@ -18,7 +18,7 @@
 use super::{DrawableRef, ZList, Z};
 use crate::{Graphics, Rect};
 
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, PartialEq, Eq)]
 pub struct Viewport {
     pub(crate) key: ViewportKey,
 }
@@ -29,16 +29,19 @@ pub(crate) struct ViewportInternal {
     pub z_list: ZList<DrawableRef>,
 }
 
-#[derive(Default)]
-pub(crate) struct GlobalViewport {
-    pub z_list: ZList<DrawableRef>,
-}
-
 slotmap::new_key_type! {
   pub(crate) struct ViewportKey;
 }
 
 impl ViewportInternal {
+    pub(crate) fn global() -> Self {
+        ViewportInternal {
+            rect: Rect::new(0, 0, 640, 480),
+            z: Z::new(0),
+            z_list: ZList::new(),
+        }
+    }
+
     pub(crate) fn insert(&mut self, z: Z, item: DrawableRef) {
         self.z_list.insert(z, item)
     }

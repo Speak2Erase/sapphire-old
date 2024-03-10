@@ -20,7 +20,7 @@ use slotmap::SlotMap;
 use std::sync::Arc;
 use winit::window::Window as NativeWindow;
 
-use crate::{EventLoop, FileSystem};
+use crate::{EventLoop, FileSystem, Rect};
 
 mod bitmap;
 pub use bitmap::Bitmap;
@@ -42,11 +42,11 @@ use tilemap::{TileKey, TilemapInternal};
 
 mod viewport;
 pub use viewport::Viewport;
-use viewport::{GlobalViewport, ViewportInternal, ViewportKey};
+use viewport::{ViewportInternal, ViewportKey};
 
 mod window;
-pub use window::Window;
-use window::{WindowInternal, WindowKey};
+use window::WindowKey;
+pub use window::{Window, WindowData};
 
 mod z;
 use z::{ZList, Z};
@@ -56,7 +56,7 @@ pub struct Graphics {
     filesystem: Arc<FileSystem>,
     pub(crate) graphics_state: GraphicsState,
     pub(crate) arenas: Arenas,
-    pub(crate) global_viewport: GlobalViewport,
+    pub(crate) global_viewport: Viewport,
 }
 
 #[derive(Default)]
@@ -66,7 +66,7 @@ pub(crate) struct Arenas {
     pub plane: SlotMap<PlaneKey, PlaneInternal>,
     pub tilemap: SlotMap<TileKey, TilemapInternal>,
     pub viewport: SlotMap<ViewportKey, ViewportInternal>,
-    pub window: SlotMap<WindowKey, WindowInternal>,
+    pub window: SlotMap<WindowKey, WindowData>,
 }
 
 pub(crate) struct GraphicsState {
@@ -90,8 +90,12 @@ impl Graphics {
             .map(Arc::new)?;
         let graphics_state = GraphicsState::new(window.clone()).await?;
 
-        let arenas = Arenas::default();
-        let global_viewport = GlobalViewport::default();
+        let mut arenas = Arenas::default();
+
+        let global_viewport = ViewportInternal::global();
+        let global_viewport = Viewport {
+            key: arenas.viewport.insert(global_viewport),
+        };
 
         Ok(Self {
             window,
