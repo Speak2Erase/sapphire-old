@@ -15,10 +15,12 @@
 // You should have received a copy of the GNU General Public License
 // along with sapphire.  If not, see <http://www.gnu.org/licenses/>.
 
+use slotmap::Key;
+
 use super::{Arenas, DrawableRef, Graphics, Viewport, Z};
 use crate::Rect;
 
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, Default)]
 pub struct Window {
     key: WindowKey,
     viewport: Option<Viewport>,
@@ -26,6 +28,8 @@ pub struct Window {
 
 pub(crate) struct WindowInternal {
     rect: Rect,
+    cursor_rect: Rect,
+    active: bool,
 }
 
 slotmap::new_key_type! {
@@ -54,6 +58,8 @@ impl Window {
     pub fn new(graphics: &mut Graphics, viewport: Option<Viewport>) -> Self {
         let internal = WindowInternal {
             rect: Rect::default(),
+            cursor_rect: Rect::default(),
+            active: false,
         };
 
         let key = graphics.arenas.window.insert(internal);
@@ -81,5 +87,21 @@ impl Window {
 
     pub fn rect_mut<'g>(&self, graphics: &'g mut Graphics) -> &'g mut Rect {
         &mut self.get_internal_mut(graphics).rect
+    }
+
+    pub fn cursor_rect<'g>(&self, graphics: &'g Graphics) -> &'g Rect {
+        &self.get_internal(graphics).rect
+    }
+
+    pub fn cursor_rect_mut<'g>(&self, graphics: &'g mut Graphics) -> &'g mut Rect {
+        &mut self.get_internal_mut(graphics).rect
+    }
+
+    pub fn active<'g>(&self, graphics: &'g Graphics) -> &'g bool {
+        &self.get_internal(graphics).active
+    }
+
+    pub fn active_mut<'g>(&self, graphics: &'g mut Graphics) -> &'g mut bool {
+        &mut self.get_internal_mut(graphics).active
     }
 }

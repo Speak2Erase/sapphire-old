@@ -15,7 +15,7 @@
 // You should have received a copy of the GNU General Public License
 // along with sapphire.  If not, see <http://www.gnu.org/licenses/>.
 
-use magnus::{function, method, typed_data::Obj, Class, Object, RString, Value};
+use magnus::{function, method, typed_data::Obj, Class, Module, Object, RString, Value};
 
 #[magnus::wrap(class = "Color", size, free_immediately)]
 pub struct Color(pub librgss::Color);
@@ -44,6 +44,11 @@ fn deserialize_color(bytes: RString) -> Color {
 
     let color = bytemuck::cast_slice(bytes)[0];
     Color(color)
+}
+
+fn serialize_color(color: &Color) -> RString {
+    let bytes = bytemuck::bytes_of(&color.0);
+    RString::from_slice(bytes)
 }
 
 #[magnus::wrap(class = "Tone", size, free_immediately)]
@@ -75,6 +80,11 @@ fn deserialize_tone(bytes: RString) -> Tone {
     Tone(tone)
 }
 
+fn serialize_tone(tone: &Tone) -> RString {
+    let bytes = bytemuck::bytes_of(&tone.0);
+    RString::from_slice(bytes)
+}
+
 #[magnus::wrap(class = "Table", size, free_immediately)]
 pub struct Table(pub librgss::Table);
 
@@ -95,6 +105,26 @@ fn deserialize_table(bytes: RString) -> Table {
     Table(table)
 }
 
+fn serialize_table(table: &Table) -> RString {
+    let table = &table.0;
+    // FIXME calculate capacity
+    let string = RString::buf_new(0);
+
+    let size = 1 + (table.ysize() > 0) as u32 + (table.zsize() > 0) as u32;
+    let header = [
+        size,
+        table.xsize() as u32,
+        table.ysize() as u32,
+        table.zsize() as u32,
+        table.len() as u32,
+    ];
+
+    string.cat(bytemuck::bytes_of(&header));
+    string.cat(bytemuck::cast_slice(table.data()));
+
+    string
+}
+
 pub fn bind(ruby: &magnus::Ruby) -> Result<(), magnus::Error> {
     let color = ruby.define_class("Color", ruby.class_object())?;
 
@@ -104,6 +134,7 @@ pub fn bind(ruby: &magnus::Ruby) -> Result<(), magnus::Error> {
         function!(magnus::RClass::undef_default_alloc_func, 1),
     )?;
     color.define_singleton_method("_load", function!(deserialize_color, 1))?;
+    color.define_method("_dump_data", method!(serialize_color, 0))?;
 
     let tone = ruby.define_class("Tone", ruby.class_object())?;
 
@@ -113,10 +144,12 @@ pub fn bind(ruby: &magnus::Ruby) -> Result<(), magnus::Error> {
         function!(magnus::RClass::undef_default_alloc_func, 1),
     )?;
     tone.define_singleton_method("_load", function!(deserialize_tone, 1))?;
+    tone.define_method("_dump_data", method!(serialize_tone, 0))?;
 
     let table = ruby.define_class("Table", ruby.class_object())?;
 
     table.define_singleton_method("_load", function!(deserialize_table, 1))?;
+    table.define_method("_dump_data", method!(serialize_table, 0))?;
 
     Ok(())
 }

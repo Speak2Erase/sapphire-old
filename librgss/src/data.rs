@@ -122,6 +122,14 @@ impl Table {
         self.data.is_empty()
     }
 
+    pub fn data(&self) -> &[i16] {
+        &self.data
+    }
+
+    pub fn data_mut(&mut self) -> &mut [i16] {
+        &mut self.data
+    }
+
     pub fn resize(&mut self, xsize: usize, ysize: usize, zsize: usize) {
         let mut new_data = vec![0; xsize * ysize];
 

@@ -57,6 +57,49 @@ fn set_x(window: &Window, x: i32) {
     window.0.rect_mut(&mut graphics).x = x;
 }
 
+fn get_y(window: &Window) -> i32 {
+    let graphics = get_graphics().read();
+    let rect = window.0.rect(&graphics);
+    rect.y
+}
+
+fn set_y(window: &Window, y: i32) {
+    let mut graphics = get_graphics().write();
+    window.0.rect_mut(&mut graphics).y = y;
+}
+
+fn get_width(window: &Window) -> u32 {
+    let graphics = get_graphics().read();
+    let rect = window.0.rect(&graphics);
+    rect.width
+}
+
+fn set_width(window: &Window, width: u32) {
+    let mut graphics = get_graphics().write();
+    window.0.rect_mut(&mut graphics).width = width;
+}
+
+fn get_height(window: &Window) -> u32 {
+    let graphics = get_graphics().read();
+    let rect = window.0.rect(&graphics);
+    rect.height
+}
+
+fn set_height(window: &Window, height: u32) {
+    let mut graphics = get_graphics().write();
+    window.0.rect_mut(&mut graphics).height = height;
+}
+
+fn get_active(window: &Window) -> bool {
+    let graphics = get_graphics().read();
+    *window.0.active(&graphics)
+}
+
+fn set_active(window: &Window, active: bool) {
+    let mut graphics = get_graphics().write();
+    *window.0.active_mut(&mut graphics) = active;
+}
+
 fn windowskin(rb_self: magnus::Value) -> Bitmap {
     todo!()
 }
@@ -76,6 +119,15 @@ pub fn bind(ruby: &magnus::Ruby) -> Result<(), magnus::Error> {
 
     class.define_method("x", method!(get_x, 0))?;
     class.define_method("x=", method!(set_x, 1))?;
+    class.define_method("y", method!(get_y, 0))?;
+    class.define_method("y=", method!(set_y, 1))?;
+    class.define_method("width", method!(get_width, 0))?;
+    class.define_method("width=", method!(set_width, 1))?;
+    class.define_method("height", method!(get_height, 0))?;
+    class.define_method("height=", method!(set_height, 1))?;
+
+    class.define_method("active", method!(get_active, 0))?;
+    class.define_method("active=", method!(set_active, 1))?;
 
     class.define_method("windowskin", method!(windowskin, 0))?;
     class.define_method("windowskin=", method!(set_windowskin, 1))?;
