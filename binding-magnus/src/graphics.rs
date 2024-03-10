@@ -30,9 +30,8 @@ pub fn get_graphics() -> &'static RwLock<librgss::Graphics> {
 }
 
 fn update() {
-    let graphics = get_graphics().write();
-
-    std::thread::sleep(std::time::Duration::from_millis(11));
+    let mut graphics = get_graphics().write();
+    graphics.update();
 }
 
 fn fullscreen() -> bool {
@@ -41,17 +40,25 @@ fn fullscreen() -> bool {
 
 fn set_fullscreen(fullscreen: bool) {}
 
-fn frame_rate() -> u32 {
-    0
+fn frame_rate() -> u16 {
+    let graphics = get_graphics().read();
+    graphics.framerate
 }
 
-fn set_frame_rate(framerate: u32) {}
+fn set_frame_rate(framerate: u16) {
+    let mut graphics = get_graphics().write();
+    graphics.framerate = framerate;
+}
 
 fn frame_count() -> u64 {
-    0
+    let graphics = get_graphics().read();
+    graphics.frame_count
 }
 
-fn set_frame_count(count: u64) {}
+fn set_frame_count(count: u64) {
+    let mut graphics = get_graphics().write();
+    graphics.frame_count = count;
+}
 
 fn frameskip() -> bool {
     false

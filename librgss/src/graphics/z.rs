@@ -24,6 +24,7 @@ pub struct Z {
     creation_time: Instant,
 }
 
+#[derive(Debug)]
 pub struct ZList<T> {
     // TODO benchmark replacing with Vec<T> and using a dirty flag
     tree_map: BTreeMap<Z, T>,

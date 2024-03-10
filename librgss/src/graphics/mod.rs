@@ -17,7 +17,10 @@
 
 use color_eyre::eyre::OptionExt;
 use slotmap::SlotMap;
-use std::sync::Arc;
+use std::{
+    sync::Arc,
+    time::{Duration, Instant},
+};
 use winit::window::Window as NativeWindow;
 
 use crate::{EventLoop, FileSystem, Rect};
@@ -54,6 +57,9 @@ use z::{ZList, Z};
 pub struct Graphics {
     window: Arc<NativeWindow>,
     filesystem: Arc<FileSystem>,
+    last_render: Instant,
+    pub framerate: u16,
+    pub frame_count: u64,
     pub(crate) graphics_state: GraphicsState,
     pub(crate) arenas: Arenas,
     pub(crate) global_viewport: Viewport,
@@ -100,10 +106,59 @@ impl Graphics {
         Ok(Self {
             window,
             filesystem,
+            last_render: Instant::now(),
+            framerate: 40,
+            frame_count: 0,
             graphics_state,
             arenas,
             global_viewport,
         })
+    }
+
+    pub fn update(&mut self) {
+        // FIXME handle
+        let Ok(surface_texture) = self.graphics_state.surface.get_current_texture() else {
+            return;
+        };
+        let surface_view = surface_texture.texture.create_view(&Default::default());
+
+        let mut encoder =
+            self.graphics_state
+                .device
+                .create_command_encoder(&wgpu::CommandEncoderDescriptor {
+                    label: Some("sapphire main command encoder"),
+                });
+
+        let render_pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
+            label: Some("sapphire main render pass"),
+            color_attachments: &[Some(wgpu::RenderPassColorAttachment {
+                view: &surface_view,
+                resolve_target: None,
+                ops: wgpu::Operations {
+                    load: wgpu::LoadOp::Clear(wgpu::Color::BLACK),
+                    store: wgpu::StoreOp::Store,
+                },
+            })],
+            depth_stencil_attachment: None,
+            timestamp_writes: None,
+            occlusion_query_set: None,
+        });
+        drop(render_pass);
+
+        let command_buffer = encoder.finish();
+        self.graphics_state
+            .queue
+            .submit(std::iter::once(command_buffer));
+
+        let frame_duration = Duration::from_secs_f32(1.0 / self.framerate as f32);
+        let now = Instant::now();
+        let time_since = self.last_render.duration_since(now);
+
+        let wait_time = frame_duration.saturating_sub(time_since);
+        println!("{frame_duration:?} {time_since:?} {wait_time:?}");
+        std::thread::sleep(wait_time);
+
+        self.last_render = Instant::now();
     }
 
     #[cfg(feature = "modshot")]

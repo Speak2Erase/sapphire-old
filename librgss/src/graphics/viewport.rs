@@ -23,6 +23,7 @@ pub struct Viewport {
     pub(crate) key: ViewportKey,
 }
 
+#[derive(Debug)]
 pub(crate) struct ViewportInternal {
     pub rect: Rect,
     pub z: Z,

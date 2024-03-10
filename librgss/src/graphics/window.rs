@@ -115,9 +115,10 @@ impl Window {
             .viewport
             .get_mut(internal.viewport.key)
             .expect(Arenas::VIEWPORT_MISSING);
-        viewport
-            .z_list
-            .re_insert(internal.z, internal.z.update_value(value))
+
+        let new_z = internal.z.update_value(value);
+        viewport.z_list.re_insert(internal.z, new_z);
+        internal.z = new_z;
     }
 
     pub fn get_data<'g>(&self, graphics: &'g Graphics) -> Option<&'g WindowData> {

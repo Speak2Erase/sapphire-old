@@ -20,7 +20,7 @@ use super::{
     ViewportInternal, ViewportKey, WindowData, WindowKey,
 };
 
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, Debug)]
 pub enum DrawableRef {
     Plane(PlaneKey),
     Sprite(SpriteKey),

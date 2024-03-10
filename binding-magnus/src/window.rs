@@ -165,5 +165,17 @@ pub fn bind(ruby: &magnus::Ruby) -> Result<(), magnus::Error> {
     class.define_method("windowskin", method!(null_getter, 0))?;
     class.define_method("windowskin=", method!(null_setter, 1))?;
 
+    class.define_method("contents", method!(null_getter, 0))?;
+    class.define_method("contents=", method!(null_setter, 1))?;
+
+    class.define_method("visible", method!(null_getter, 0))?;
+    class.define_method("visible=", method!(null_setter, 1))?;
+
+    class.define_method("active", method!(null_getter, 0))?;
+    class.define_method("active=", method!(null_setter, 1))?;
+
+    class.define_method("back_opacity", method!(null_getter, 0))?;
+    class.define_method("back_opacity=", method!(null_setter, 1))?;
+
     Ok(())
 }
