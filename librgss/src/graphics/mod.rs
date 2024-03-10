@@ -103,7 +103,7 @@ impl Graphics {
             key: arenas.viewport.insert(global_viewport),
         };
 
-        Ok(Self {
+        let mut this = Self {
             window,
             filesystem,
             last_render: Instant::now(),
@@ -112,10 +112,14 @@ impl Graphics {
             graphics_state,
             arenas,
             global_viewport,
-        })
+        };
+        // render, so the window is black
+        this.render();
+
+        Ok(this)
     }
 
-    pub fn update(&mut self) {
+    fn render(&mut self) {
         // FIXME handle
         let Ok(surface_texture) = self.graphics_state.surface.get_current_texture() else {
             return;
@@ -149,6 +153,12 @@ impl Graphics {
         self.graphics_state
             .queue
             .submit(std::iter::once(command_buffer));
+
+        surface_texture.present();
+    }
+
+    pub fn update(&mut self) {
+        self.render();
 
         let frame_duration = Duration::from_secs_f32(1.0 / self.framerate as f32);
         let now = Instant::now();
