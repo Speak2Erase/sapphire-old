@@ -17,6 +17,7 @@ serde = "1.0.197"
 flate2 = "1.0"
 
 parking_lot.workspace = true
+crossbeam.workspace = true
 
 whoami = { version = "1.4.1", optional = true }
 dirs = { version = "5.0.1", optional = true }

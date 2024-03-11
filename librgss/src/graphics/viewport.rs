@@ -16,7 +16,7 @@
 // along with sapphire.  If not, see <http://www.gnu.org/licenses/>.
 
 use super::{DrawableRef, ZList, Z};
-use crate::{Graphics, Rect};
+use crate::Rect;
 
 #[derive(Clone, Copy, PartialEq, Eq)]
 pub struct Viewport {
@@ -61,15 +61,5 @@ impl ViewportInternal {
         if let Some(item) = self.remove(z) {
             other.insert(z, item)
         }
-    }
-
-    pub(crate) fn draw(&mut self, graphics: &Graphics) {
-        self.z_list.retain(|_, drawable| {
-            let Some(drawable) = drawable.fetch(graphics) else {
-                return false;
-            };
-
-            true
-        });
     }
 }

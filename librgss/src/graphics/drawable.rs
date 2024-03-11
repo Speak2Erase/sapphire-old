@@ -16,9 +16,10 @@
 // along with sapphire.  If not, see <http://www.gnu.org/licenses/>.
 
 use super::{
-    Graphics, PlaneInternal, PlaneKey, SpriteInternal, SpriteKey, TileKey, TilemapInternal,
-    ViewportInternal, ViewportKey, WindowData, WindowKey,
+    PlaneInternal, PlaneKey, SpriteInternal, SpriteKey, TileKey, TilemapInternal, ViewportInternal,
+    ViewportKey, WindowData, WindowKey,
 };
+use crate::Arenas;
 
 #[derive(Clone, Copy, Debug)]
 pub enum DrawableRef {
@@ -46,27 +47,23 @@ pub enum DrawableMut<'res> {
 }
 
 impl DrawableRef {
-    pub fn fetch(self, graphics: &Graphics) -> Option<Drawable<'_>> {
+    pub fn fetch(self, arenas: &Arenas) -> Option<Drawable<'_>> {
         match self {
-            DrawableRef::Plane(p) => graphics.arenas.plane.get(p).map(Drawable::Plane),
-            DrawableRef::Sprite(s) => graphics.arenas.sprite.get(s).map(Drawable::Sprite),
-            DrawableRef::Tilemap(t) => graphics.arenas.tilemap.get(t).map(Drawable::Tilemap),
-            DrawableRef::Viewport(v) => graphics.arenas.viewport.get(v).map(Drawable::Viewport),
-            DrawableRef::Window(w) => graphics.arenas.window.get(w).map(Drawable::Window),
+            DrawableRef::Plane(p) => arenas.plane.get(p).map(Drawable::Plane),
+            DrawableRef::Sprite(s) => arenas.sprite.get(s).map(Drawable::Sprite),
+            DrawableRef::Tilemap(t) => arenas.tilemap.get(t).map(Drawable::Tilemap),
+            DrawableRef::Viewport(v) => arenas.viewport.get(v).map(Drawable::Viewport),
+            DrawableRef::Window(w) => arenas.window.get(w).map(Drawable::Window),
         }
     }
 
-    pub fn fetch_mut(self, graphics: &mut Graphics) -> Option<DrawableMut<'_>> {
+    pub fn fetch_mut(self, arenas: &mut Arenas) -> Option<DrawableMut<'_>> {
         match self {
-            DrawableRef::Plane(p) => graphics.arenas.plane.get_mut(p).map(DrawableMut::Plane),
-            DrawableRef::Sprite(s) => graphics.arenas.sprite.get_mut(s).map(DrawableMut::Sprite),
-            DrawableRef::Tilemap(t) => graphics.arenas.tilemap.get_mut(t).map(DrawableMut::Tilemap),
-            DrawableRef::Viewport(v) => graphics
-                .arenas
-                .viewport
-                .get_mut(v)
-                .map(DrawableMut::Viewport),
-            DrawableRef::Window(w) => graphics.arenas.window.get_mut(w).map(DrawableMut::Window),
+            DrawableRef::Plane(p) => arenas.plane.get_mut(p).map(DrawableMut::Plane),
+            DrawableRef::Sprite(s) => arenas.sprite.get_mut(s).map(DrawableMut::Sprite),
+            DrawableRef::Tilemap(t) => arenas.tilemap.get_mut(t).map(DrawableMut::Tilemap),
+            DrawableRef::Viewport(v) => arenas.viewport.get_mut(v).map(DrawableMut::Viewport),
+            DrawableRef::Window(w) => arenas.window.get_mut(w).map(DrawableMut::Window),
         }
     }
 }

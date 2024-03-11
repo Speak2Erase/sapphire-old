@@ -2302,6 +2302,7 @@ dependencies = [
  "alox-48",
  "bytemuck",
  "color-eyre",
+ "crossbeam",
  "dirs",
  "flate2",
  "librgss",

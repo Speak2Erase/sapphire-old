@@ -1,9 +1,10 @@
 #![forbid(unsafe_op_in_unsafe_fn)]
 
 mod scripts;
-use std::sync::Arc;
+use std::sync::{Arc, OnceLock};
 
 use magnus::{function, value::ReprValue};
+use parking_lot::RwLock;
 use scripts::Script;
 
 mod error;
@@ -38,11 +39,17 @@ mod rpg;
 
 pub fn start(
     audio: librgss::Audio,
+    arenas: librgss::Arenas,
     graphics: librgss::Graphics,
     fonts: librgss::Fonts,
     input: librgss::Input,
     filesystem: Arc<librgss::FileSystem>,
 ) -> std::thread::JoinHandle<color_eyre::Result<()>> {
+    // panic if arena is set! this should not *ever* happen
+    if ARENAS.set(RwLock::new(arenas)).is_err() {
+        panic!("arenas static already set! this is not supposed to happen")
+    }
+
     std::thread::Builder::new()
         .name("librgss ruby thread".to_string())
         .spawn(move || {
@@ -58,6 +65,14 @@ pub fn start(
             result
         })
         .expect("failed to start ruby thread")
+}
+
+static ARENAS: OnceLock<RwLock<librgss::Arenas>> = OnceLock::new();
+
+fn get_arenas() -> &'static RwLock<librgss::Arenas> {
+    ARENAS
+        .get()
+        .expect("arenas static not set! please report how you encountered this crash")
 }
 
 unsafe fn run_ruby_thread(

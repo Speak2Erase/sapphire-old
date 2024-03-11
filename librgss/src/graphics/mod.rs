@@ -16,7 +16,6 @@
 // along with Sapphire.  If not, see <http://www.gnu.org/licenses/>.
 
 use color_eyre::eyre::OptionExt;
-use slotmap::SlotMap;
 use std::{
     sync::Arc,
     time::{Duration, Instant},
@@ -33,22 +32,22 @@ use drawable::{Drawable, DrawableMut, DrawableRef};
 
 mod sprite;
 pub use sprite::Sprite;
-use sprite::{SpriteInternal, SpriteKey};
+pub(crate) use sprite::{SpriteInternal, SpriteKey};
 
 mod plane;
 pub use plane::Plane;
-use plane::{PlaneInternal, PlaneKey};
+pub(crate) use plane::{PlaneInternal, PlaneKey};
 
 mod tilemap;
 pub use tilemap::Tilemap;
-use tilemap::{TileKey, TilemapInternal};
+pub(crate) use tilemap::{TileKey, TilemapInternal};
 
 mod viewport;
 pub use viewport::Viewport;
-use viewport::{ViewportInternal, ViewportKey};
+pub(crate) use viewport::{ViewportInternal, ViewportKey};
 
 mod window;
-use window::WindowKey;
+pub(crate) use window::WindowKey;
 pub use window::{Window, WindowData};
 
 mod z;
@@ -61,18 +60,7 @@ pub struct Graphics {
     pub framerate: u16,
     pub frame_count: u64,
     pub(crate) graphics_state: GraphicsState,
-    pub(crate) arenas: Arenas,
     pub(crate) global_viewport: Viewport,
-}
-
-#[derive(Default)]
-pub(crate) struct Arenas {
-    // FIXME use generational arenas instead to avoid aba
-    pub sprite: SlotMap<SpriteKey, SpriteInternal>,
-    pub plane: SlotMap<PlaneKey, PlaneInternal>,
-    pub tilemap: SlotMap<TileKey, TilemapInternal>,
-    pub viewport: SlotMap<ViewportKey, ViewportInternal>,
-    pub window: SlotMap<WindowKey, WindowData>,
 }
 
 pub(crate) struct GraphicsState {
@@ -85,6 +73,7 @@ pub(crate) struct GraphicsState {
 
 impl Graphics {
     pub async fn new(
+        arenas: &mut crate::Arenas,
         event_loop: &EventLoop,
         filesystem: Arc<FileSystem>,
     ) -> color_eyre::Result<Self> {
@@ -95,8 +84,6 @@ impl Graphics {
             .build(&event_loop.event_loop)
             .map(Arc::new)?;
         let graphics_state = GraphicsState::new(window.clone()).await?;
-
-        let mut arenas = Arenas::default();
 
         let global_viewport = ViewportInternal::global();
         let global_viewport = Viewport {
@@ -110,7 +97,6 @@ impl Graphics {
             framerate: 40,
             frame_count: 0,
             graphics_state,
-            arenas,
             global_viewport,
         };
         // render, so the window is black
@@ -175,13 +161,6 @@ impl Graphics {
     pub fn set_window_title(&self, title: &str) {
         self.window.set_title(title)
     }
-}
-
-impl Arenas {
-    const WINDOW_MISSING: &'static str =
-        "window is missing from graphics arena! please report you you encountered this";
-    const VIEWPORT_MISSING: &'static str =
-        "viewport is missing from graphics arena! please report you you encountered this";
 }
 
 impl GraphicsState {

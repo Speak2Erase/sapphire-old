@@ -17,8 +17,8 @@
 
 use slotmap::Key;
 
-use super::{Arenas, DrawableRef, Graphics, Viewport, Z};
-use crate::Rect;
+use super::{DrawableRef, Graphics, Viewport, Z};
+use crate::{Arenas, Rect};
 
 #[derive(Clone, Copy)]
 pub struct Window {
@@ -38,7 +38,7 @@ slotmap::new_key_type! {
 }
 
 impl Window {
-    pub fn new(graphics: &mut Graphics, viewport: Option<Viewport>) -> Self {
+    pub fn new(graphics: &Graphics, arenas: &mut Arenas, viewport: Option<Viewport>) -> Self {
         let viewport = viewport.unwrap_or(graphics.global_viewport);
         let z = Z::new(0);
 
@@ -50,13 +50,12 @@ impl Window {
             z,
         };
 
-        let viewport = graphics
-            .arenas
+        let viewport = arenas
             .viewport
             .get_mut(viewport.key)
             .expect(Arenas::VIEWPORT_MISSING);
 
-        let key = graphics.arenas.window.insert(internal);
+        let key = arenas.window.insert(internal);
         let drawable = DrawableRef::Window(key);
         viewport.z_list.insert(z, drawable);
 
@@ -69,9 +68,13 @@ impl Window {
         }
     }
 
-    pub fn set_viewport(&mut self, graphics: &mut Graphics, viewport: Option<Viewport>) {
-        let internal = graphics
-            .arenas
+    pub fn set_viewport(
+        &mut self,
+        graphics: &Graphics,
+        arenas: &mut Arenas,
+        viewport: Option<Viewport>,
+    ) {
+        let internal = arenas
             .window
             .get_mut(self.key)
             .expect(Arenas::WINDOW_MISSING);
@@ -82,26 +85,20 @@ impl Window {
             return;
         }
 
-        let [current_viewport, new_viewport] = graphics
-            .arenas
+        let [current_viewport, new_viewport] = arenas
             .viewport
             .get_disjoint_mut([internal.viewport.key, new_viewport.key])
             .expect(Arenas::VIEWPORT_MISSING);
         new_viewport.swap(current_viewport, internal.z);
     }
 
-    pub fn z(&self, graphics: &Graphics) -> i32 {
-        let internal = graphics
-            .arenas
-            .window
-            .get(self.key)
-            .expect(Arenas::WINDOW_MISSING);
+    pub fn z(&self, arenas: &Arenas) -> i32 {
+        let internal = arenas.window.get(self.key).expect(Arenas::WINDOW_MISSING);
         internal.z.value()
     }
 
-    pub fn set_z(&self, graphics: &mut Graphics, value: i32) {
-        let internal = graphics
-            .arenas
+    pub fn set_z(&self, arenas: &mut Arenas, value: i32) {
+        let internal = arenas
             .window
             .get_mut(self.key)
             .expect(Arenas::WINDOW_MISSING);
@@ -110,8 +107,7 @@ impl Window {
             return;
         }
 
-        let viewport = graphics
-            .arenas
+        let viewport = arenas
             .viewport
             .get_mut(internal.viewport.key)
             .expect(Arenas::VIEWPORT_MISSING);
@@ -121,11 +117,11 @@ impl Window {
         internal.z = new_z;
     }
 
-    pub fn get_data<'g>(&self, graphics: &'g Graphics) -> Option<&'g WindowData> {
-        graphics.arenas.window.get(self.key)
+    pub fn get_data<'g>(&self, arenas: &'g Arenas) -> Option<&'g WindowData> {
+        arenas.window.get(self.key)
     }
 
-    pub fn get_data_mut<'g>(&self, graphics: &'g mut Graphics) -> Option<&'g mut WindowData> {
-        graphics.arenas.window.get_mut(self.key)
+    pub fn get_data_mut<'g>(&self, arenas: &'g mut Arenas) -> Option<&'g mut WindowData> {
+        arenas.window.get_mut(self.key)
     }
 }

@@ -15,17 +15,17 @@
 // You should have received a copy of the GNU General Public License
 // along with sapphire.  If not, see <http://www.gnu.org/licenses/>.
 
+use crossbeam::atomic::AtomicCell;
 use magnus::{function, method, typed_data::Obj, Class, Module, Object};
-use std::cell::Cell;
 
-use crate::{bitmap::Bitmap, graphics::get_graphics, viewport::Viewport};
+use crate::{bitmap::Bitmap, get_arenas, graphics::get_graphics, viewport::Viewport};
 
-#[magnus::wrap(class = "Window", free_immediately, size)]
-pub struct Window(Cell<librgss::Window>);
+#[magnus::wrap(class = "Window", free_immediately, size, frozen_shareable)]
+pub struct Window(AtomicCell<librgss::Window>);
 
 impl Default for Window {
     fn default() -> Self {
-        Self(Cell::new(librgss::Window::null()))
+        Self(AtomicCell::new(librgss::Window::null()))
     }
 }
 
@@ -34,75 +34,77 @@ impl Window {
         let args = magnus::scan_args::scan_args::<(), _, (), (), (), ()>(args)?;
         let (viewport,): (Option<&Viewport>,) = args.optional;
 
-        let mut graphics = get_graphics().write();
-        let window = librgss::Window::new(&mut graphics, viewport.copied().map(Into::into));
-        rb_self.0.set(window);
+        let graphics = get_graphics().read();
+        let mut arenas = get_arenas().write();
+        let window =
+            librgss::Window::new(&graphics, &mut arenas, viewport.copied().map(Into::into));
+        rb_self.0.store(window);
 
         Ok(())
     }
 
     fn x(rb_self: Obj<Window>) -> Result<i32, magnus::Error> {
-        let graphics = get_graphics().read();
-        let data = rb_self.get_data(&graphics)?;
+        let arenas = get_arenas().read();
+        let data = rb_self.get_data(&arenas)?;
         Ok(data.rect.x)
     }
 
     fn set_x(rb_self: Obj<Window>, x: i32) -> Result<(), magnus::Error> {
-        let mut graphics = get_graphics().write();
-        let data = rb_self.get_data_mut(&mut graphics)?;
+        let mut arenas = get_arenas().write();
+        let data = rb_self.get_data_mut(&mut arenas)?;
         data.rect.x = x;
         Ok(())
     }
 
     fn y(rb_self: Obj<Window>) -> Result<i32, magnus::Error> {
-        let graphics = get_graphics().read();
-        let data = rb_self.get_data(&graphics)?;
+        let arenas = get_arenas().read();
+        let data = rb_self.get_data(&arenas)?;
         Ok(data.rect.y)
     }
 
     fn set_y(rb_self: Obj<Window>, y: i32) -> Result<(), magnus::Error> {
-        let mut graphics = get_graphics().write();
-        let data = rb_self.get_data_mut(&mut graphics)?;
+        let mut arenas = get_arenas().write();
+        let data = rb_self.get_data_mut(&mut arenas)?;
         data.rect.y = y;
         Ok(())
     }
 
     fn width(rb_self: Obj<Window>) -> Result<u32, magnus::Error> {
-        let graphics = get_graphics().read();
-        let data = rb_self.get_data(&graphics)?;
+        let arenas = get_arenas().read();
+        let data = rb_self.get_data(&arenas)?;
         Ok(data.rect.width)
     }
 
     fn set_width(rb_self: Obj<Window>, width: u32) -> Result<(), magnus::Error> {
-        let mut graphics = get_graphics().write();
-        let data = rb_self.get_data_mut(&mut graphics)?;
+        let mut arenas = get_arenas().write();
+        let data = rb_self.get_data_mut(&mut arenas)?;
         data.rect.width = width;
         Ok(())
     }
 
     fn height(rb_self: Obj<Window>) -> Result<u32, magnus::Error> {
-        let graphics = get_graphics().read();
-        let data = rb_self.get_data(&graphics)?;
+        let arenas = get_arenas().read();
+        let data = rb_self.get_data(&arenas)?;
         Ok(data.rect.height)
     }
 
     fn set_height(rb_self: Obj<Window>, height: u32) -> Result<(), magnus::Error> {
-        let mut graphics = get_graphics().write();
-        let data = rb_self.get_data_mut(&mut graphics)?;
+        let mut arenas = get_arenas().write();
+        let data = rb_self.get_data_mut(&mut arenas)?;
         data.rect.height = height;
         Ok(())
     }
 
     fn z(rb_self: Obj<Window>) -> Result<i32, magnus::Error> {
-        let graphics = get_graphics().read();
-        let window = rb_self.0.get();
-        Ok(window.z(&graphics))
+        let arenas = get_arenas().read();
+        let window = rb_self.0.load();
+        Ok(window.z(&arenas))
     }
 
     fn set_z(rb_self: Obj<Window>, z: i32) -> Result<(), magnus::Error> {
-        let mut graphics = get_graphics().write();
-        let window = rb_self.0.get();
-        window.set_z(&mut graphics, z);
+        let mut arenas = get_arenas().write();
+        let window = rb_self.0.load();
+        window.set_z(&mut arenas, z);
         Ok(())
     }
 }
@@ -110,10 +112,10 @@ impl Window {
 impl Window {
     fn get_data<'g>(
         &self,
-        graphics: &'g librgss::Graphics,
+        arenas: &'g librgss::Arenas,
     ) -> Result<&'g librgss::graphics::WindowData, magnus::Error> {
-        let window = self.0.get();
-        window.get_data(graphics).ok_or_else(|| {
+        let window = self.0.load();
+        window.get_data(arenas).ok_or_else(|| {
             magnus::Error::new(
                 magnus::exception::runtime_error(),
                 "invalid window (missing call to super?)",
@@ -123,10 +125,10 @@ impl Window {
 
     fn get_data_mut<'g>(
         &self,
-        graphics: &'g mut librgss::Graphics,
+        arenas: &'g mut librgss::Arenas,
     ) -> Result<&'g mut librgss::graphics::WindowData, magnus::Error> {
-        let window = self.0.get();
-        window.get_data_mut(graphics).ok_or_else(|| {
+        let window = self.0.load();
+        window.get_data_mut(arenas).ok_or_else(|| {
             magnus::Error::new(
                 magnus::exception::runtime_error(),
                 "invalid window (missing call to super?)",

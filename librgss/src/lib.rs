@@ -1,3 +1,6 @@
+mod arenas;
+pub use arenas::Arenas;
+
 mod audio;
 pub use audio::Audio;
 
