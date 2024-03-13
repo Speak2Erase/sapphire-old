@@ -15,16 +15,19 @@
 // You should have received a copy of the GNU General Public License
 // along with sapphire.  If not, see <http://www.gnu.org/licenses/>.
 
-use magnus::{
-    function, method, typed_data::Obj, Class, Module, Object, RString, TryConvert, Value,
-};
+use std::cell::RefCell;
+
+use crossbeam::atomic::AtomicCell;
+use magnus::{function, method, Class, Module, Object, RString, TryConvert, Value};
+
+use crate::helpers::{Provider, ProviderVal, RectProvider};
 
 #[derive(Default)]
 #[magnus::wrap(class = "Color", size, free_immediately)]
 pub struct Color(pub librgss::SharedColor);
 
 impl Color {
-    fn initialize(rb_self: Obj<Color>, args: &[Value]) -> Result<(), magnus::Error> {
+    fn initialize(&self, args: &[Value]) -> Result<(), magnus::Error> {
         let args = magnus::scan_args::scan_args::<_, _, (), (), (), ()>(args)?;
 
         let (red, green, blue) = args.required;
@@ -36,7 +39,7 @@ impl Color {
             green,
             alpha: alpha.unwrap_or(255.0),
         };
-        rb_self.0.store(color);
+        self.0.store(color);
 
         Ok(())
     }
@@ -62,7 +65,7 @@ impl Color {
 pub struct Tone(pub librgss::SharedTone);
 
 impl Tone {
-    fn initialize(rb_self: Obj<Tone>, args: &[Value]) -> Result<(), magnus::Error> {
+    fn initialize(&self, args: &[Value]) -> Result<(), magnus::Error> {
         let args = magnus::scan_args::scan_args::<_, _, (), (), (), ()>(args)?;
 
         let (red, green, blue) = args.required;
@@ -74,7 +77,7 @@ impl Tone {
             green,
             grey: grey.unwrap_or(0.0),
         };
-        rb_self.0.store(tone);
+        self.0.store(tone);
 
         Ok(())
     }
@@ -96,18 +99,46 @@ impl Tone {
 }
 
 #[derive(Default)]
-#[magnus::wrap(class = "Table", size, free_immediately)]
+#[magnus::wrap(class = "Rect", size, free_immediately, frozen_shareable)]
+pub struct Rect(pub(crate) AtomicCell<ProviderVal<librgss::Rect, RectProvider>>);
+
+impl Rect {
+    fn initialize(&self, x: i32, y: i32, width: u32, height: u32) {
+        self.set(x, y, width, height)
+    }
+
+    fn set(&self, x: i32, y: i32, width: u32, height: u32) {
+        let mut provider = self.0.load();
+        provider.provide_mut(|rect| *rect = librgss::Rect::new(x, y, width, height));
+    }
+
+    fn empty(&self) {
+        self.set(0, 0, 0, 0)
+    }
+
+    pub fn from_provider(p: impl Into<RectProvider>) -> Self {
+        let provider = ProviderVal::provider(p);
+        Self(AtomicCell::new(provider))
+    }
+
+    pub fn as_rect(&self) -> librgss::Rect {
+        self.0.load().provide_copy()
+    }
+}
+
+#[derive(Default)]
+#[magnus::wrap(class = "Table", size, free_immediately, frozen_shareable)]
 pub struct Table(pub librgss::SharedTable);
 
 impl Table {
-    fn initialize(rb_self: Obj<Table>, args: &[Value]) -> Result<(), magnus::Error> {
+    fn initialize(&self, args: &[Value]) -> Result<(), magnus::Error> {
         let args = magnus::scan_args::scan_args::<_, _, (), (), (), ()>(args)?;
 
         let (xsize,) = args.required;
         let (ysize, zsize) = args.optional;
 
         let table = librgss::Table::new(xsize, ysize.unwrap_or(0), zsize.unwrap_or(0));
-        *rb_self.0.write() = table;
+        *self.0.write() = table;
 
         Ok(())
     }
@@ -239,6 +270,14 @@ pub fn bind(ruby: &magnus::Ruby) -> Result<(), magnus::Error> {
     tone.define_method("initialize", method!(Tone::initialize, -1))?;
     tone.define_singleton_method("_load", function!(Tone::deserialize, 1))?;
     tone.define_method("_dump_data", method!(Tone::serialize, 0))?;
+
+    let rect = ruby.define_class("Rect", ruby.class_object())?;
+
+    rect.define_alloc_func::<Rect>();
+    rect.define_method("initialize", method!(Rect::initialize, 4))?;
+
+    rect.define_method("set", method!(Rect::set, 4))?;
+    rect.define_method("empty", method!(Rect::empty, 0))?;
 
     let table = ruby.define_class("Table", ruby.class_object())?;
 
