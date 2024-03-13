@@ -89,11 +89,15 @@ fn set_default_italic(italic: bool) {
 }
 
 fn default_color() -> Color {
-    Color(get_fonts().read().default.color)
+    let fonts = get_fonts().read();
+    let color = fonts.default.color.clone();
+    Color(color)
 }
 
 fn set_default_color(color: &Color) {
-    get_fonts().write().default.color = color.0
+    let mut fonts = get_fonts().write();
+    let color = color.0.clone();
+    fonts.default.color = color;
 }
 
 #[cfg(feature = "rgss2")]
@@ -108,22 +112,30 @@ fn set_default_shadow(shadow: bool) {
 
 #[cfg(feature = "rgss3")]
 fn default_outline() -> Color {
-    Color(get_fonts().read().default.outline)
+    let fonts = get_fonts().read();
+    let color = fonts.default.outline.clone();
+    Color(color)
 }
 
 #[cfg(feature = "rgss3")]
 fn set_default_outline(color: &Color) {
-    get_fonts().write().default.outline = color.0
+    let mut fonts = get_fonts().write();
+    let color = color.0.clone();
+    fonts.default.outline = color;
 }
 
 #[cfg(feature = "rgss3")]
 fn default_out_color() -> Color {
-    Color(get_fonts().read().default.out_color)
+    let fonts = get_fonts().read();
+    let color = fonts.default.out_color.clone();
+    Color(color)
 }
 
 #[cfg(feature = "rgss3")]
 fn set_default_out_color(color: &Color) {
-    get_fonts().write().default.out_color = color.0
+    let mut fonts = get_fonts().write();
+    let color = color.0.clone();
+    fonts.default.out_color = color;
 }
 
 pub fn bind(ruby: &magnus::Ruby, fonts: librgss::Fonts) -> Result<(), magnus::Error> {

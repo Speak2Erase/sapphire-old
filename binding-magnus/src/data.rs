@@ -15,141 +15,245 @@
 // You should have received a copy of the GNU General Public License
 // along with sapphire.  If not, see <http://www.gnu.org/licenses/>.
 
-use magnus::{function, method, typed_data::Obj, Class, Module, Object, RString, Value};
+use magnus::{
+    function, method, typed_data::Obj, Class, Module, Object, RString, TryConvert, Value,
+};
 
+#[derive(Default)]
 #[magnus::wrap(class = "Color", size, free_immediately)]
-pub struct Color(pub librgss::Color);
+pub struct Color(pub librgss::SharedColor);
 
-fn color_new(class: magnus::RClass, args: &[Value]) -> Result<Obj<Color>, magnus::Error> {
-    let args = magnus::scan_args::scan_args::<_, _, (), (), (), ()>(args)?;
+impl Color {
+    fn initialize(rb_self: Obj<Color>, args: &[Value]) -> Result<(), magnus::Error> {
+        let args = magnus::scan_args::scan_args::<_, _, (), (), (), ()>(args)?;
 
-    let (red, green, blue) = args.required;
-    let (alpha,) = args.optional;
+        let (red, green, blue) = args.required;
+        let (alpha,) = args.optional;
 
-    let color = librgss::Color {
-        red,
-        blue,
-        green,
-        alpha: alpha.unwrap_or(255.0),
-    };
+        let color = librgss::Color {
+            red,
+            blue,
+            green,
+            alpha: alpha.unwrap_or(255.0),
+        };
+        rb_self.0.store(color);
 
-    let wrapped = Obj::wrap_as(Color(color), class);
-    Ok(wrapped)
+        Ok(())
+    }
+
+    fn deserialize(bytes: RString) -> Color {
+        //? Safety
+        // We don't store bytes anywhere or hold onto it long enough for ruby to garbage colect it.
+        let bytes = unsafe { bytes.as_slice() };
+
+        let color: librgss::Color = *bytemuck::from_bytes(bytes);
+        Color(color.into())
+    }
+
+    fn serialize(color: &Color) -> RString {
+        let color = color.0.load();
+        let bytes = bytemuck::bytes_of(&color);
+        RString::from_slice(bytes)
+    }
 }
 
-fn deserialize_color(bytes: RString) -> Color {
-    //? Safety
-    // We don't store bytes anywhere or hold onto it long enough for ruby to garbage colect it.
-    let bytes = unsafe { bytes.as_slice() };
-
-    let color = bytemuck::cast_slice(bytes)[0];
-    Color(color)
-}
-
-fn serialize_color(color: &Color) -> RString {
-    let bytes = bytemuck::bytes_of(&color.0);
-    RString::from_slice(bytes)
-}
-
+#[derive(Default)]
 #[magnus::wrap(class = "Tone", size, free_immediately)]
-pub struct Tone(pub librgss::Tone);
+pub struct Tone(pub librgss::SharedTone);
 
-fn tone_new(class: magnus::RClass, args: &[Value]) -> Result<Obj<Tone>, magnus::Error> {
-    let args = magnus::scan_args::scan_args::<_, _, (), (), (), ()>(args)?;
+impl Tone {
+    fn initialize(rb_self: Obj<Tone>, args: &[Value]) -> Result<(), magnus::Error> {
+        let args = magnus::scan_args::scan_args::<_, _, (), (), (), ()>(args)?;
 
-    let (red, green, blue) = args.required;
-    let (grey,) = args.optional;
+        let (red, green, blue) = args.required;
+        let (grey,) = args.optional;
 
-    let tone = librgss::Tone {
-        red,
-        blue,
-        green,
-        grey: grey.unwrap_or(0.0),
-    };
+        let tone = librgss::Tone {
+            red,
+            blue,
+            green,
+            grey: grey.unwrap_or(0.0),
+        };
+        rb_self.0.store(tone);
 
-    let wrapped = Obj::wrap_as(Tone(tone), class);
-    Ok(wrapped)
+        Ok(())
+    }
+
+    fn deserialize(bytes: RString) -> Tone {
+        //? Safety
+        // We don't store bytes anywhere or hold onto it long enough for ruby to garbage colect it.
+        let bytes = unsafe { bytes.as_slice() };
+
+        let tone: librgss::Tone = *bytemuck::from_bytes(bytes);
+        Tone(tone.into())
+    }
+
+    fn serialize(tone: &Tone) -> RString {
+        let tone = tone.0.load();
+        let bytes = bytemuck::bytes_of(&tone);
+        RString::from_slice(bytes)
+    }
 }
 
-fn deserialize_tone(bytes: RString) -> Tone {
-    //? Safety
-    // We don't store bytes anywhere or hold onto it long enough for ruby to garbage colect it.
-    let bytes = unsafe { bytes.as_slice() };
-
-    let tone = bytemuck::cast_slice(bytes)[0];
-    Tone(tone)
-}
-
-fn serialize_tone(tone: &Tone) -> RString {
-    let bytes = bytemuck::bytes_of(&tone.0);
-    RString::from_slice(bytes)
-}
-
+#[derive(Default)]
 #[magnus::wrap(class = "Table", size, free_immediately)]
-pub struct Table(pub librgss::Table);
+pub struct Table(pub librgss::SharedTable);
 
-fn deserialize_table(bytes: RString) -> Table {
-    //? Safety
-    // We don't store bytes anywhere or hold onto it long enough for ruby to garbage colect it.
-    let bytes = unsafe { bytes.as_slice() };
+impl Table {
+    fn initialize(rb_self: Obj<Table>, args: &[Value]) -> Result<(), magnus::Error> {
+        let args = magnus::scan_args::scan_args::<_, _, (), (), (), ()>(args)?;
 
-    let u32_slice: &[u32] = bytemuck::cast_slice(bytes);
+        let (xsize,) = args.required;
+        let (ysize, zsize) = args.optional;
 
-    let [_, xsize, ysize, zsize, len, data @ ..] = u32_slice else {
-        todo!()
-    };
-    let data = bytemuck::cast_slice(data).to_vec();
-    assert_eq!(*len as usize, data.len());
+        let table = librgss::Table::new(xsize, ysize.unwrap_or(0), zsize.unwrap_or(0));
+        *rb_self.0.write() = table;
 
-    let table = librgss::Table::new_data(*xsize as usize, *ysize as usize, *zsize as usize, data);
-    Table(table)
-}
+        Ok(())
+    }
 
-fn serialize_table(table: &Table) -> RString {
-    let table = &table.0;
-    // FIXME calculate capacity
-    let string = RString::buf_new(0);
+    fn xsize(&self) -> usize {
+        self.0.read().xsize()
+    }
 
-    let size = 1 + (table.ysize() > 0) as u32 + (table.zsize() > 0) as u32;
-    let header = [
-        size,
-        table.xsize() as u32,
-        table.ysize() as u32,
-        table.zsize() as u32,
-        table.len() as u32,
-    ];
+    fn ysize(&self) -> usize {
+        self.0.read().ysize()
+    }
 
-    string.cat(bytemuck::bytes_of(&header));
-    string.cat(bytemuck::cast_slice(table.data()));
+    fn zsize(&self) -> usize {
+        self.0.read().zsize()
+    }
 
-    string
+    fn resize(&self, args: &[Value]) -> Result<(), magnus::Error> {
+        let args = magnus::scan_args::scan_args::<_, _, (), (), (), ()>(args)?;
+
+        let (xsize,) = args.required;
+        let (ysize, zsize) = args.optional;
+
+        let mut table = self.0.write();
+        table.resize(xsize, ysize.unwrap_or(0), zsize.unwrap_or(0));
+
+        Ok(())
+    }
+
+    fn get(&self, args: &[Value]) -> Result<i16, magnus::Error> {
+        let args = magnus::scan_args::scan_args::<_, _, (), (), (), ()>(args)?;
+
+        let (x,) = args.required;
+        let (y, z) = args.optional;
+
+        let table = self.0.read();
+        let value = table[(x, y.unwrap_or(0), z.unwrap_or(0))];
+
+        Ok(value)
+    }
+
+    fn set(&self, args: &[Value]) -> Result<(), magnus::Error> {
+        let (x, y, z, val) = match *args {
+            [x, val] => {
+                let x = usize::try_convert(x)?;
+                let val = i16::try_convert(val)?;
+
+                (x, 0, 0, val)
+            }
+            [x, y, val] => {
+                let x = usize::try_convert(x)?;
+                let y = usize::try_convert(y)?;
+                let val = i16::try_convert(val)?;
+
+                (x, y, 0, val)
+            }
+            [x, y, z, val] => {
+                let x = usize::try_convert(x)?;
+                let y = usize::try_convert(y)?;
+                let z = usize::try_convert(z)?;
+                let val = i16::try_convert(val)?;
+
+                (x, y, z, val)
+            }
+            _ => {
+                let err = magnus::Error::new(
+                    magnus::exception::arg_error(),
+                    "wrong number  of arguments",
+                );
+                return Err(err);
+            }
+        };
+
+        let mut table = self.0.write();
+        table[(x, y, z)] = val;
+
+        Ok(())
+    }
+
+    fn deserialize(bytes: RString) -> Table {
+        //? Safety
+        // We don't store bytes anywhere or hold onto it long enough for ruby to garbage colect it.
+        let bytes = unsafe { bytes.as_slice() };
+
+        let u32_slice: &[u32] = bytemuck::cast_slice(bytes);
+
+        let [_, xsize, ysize, zsize, len, data @ ..] = u32_slice else {
+            todo!()
+        };
+        let data = bytemuck::cast_slice(data).to_vec();
+        assert_eq!(*len as usize, data.len());
+
+        let table =
+            librgss::Table::new_data(*xsize as usize, *ysize as usize, *zsize as usize, data);
+        Table(table.into())
+    }
+
+    fn serialize(table: &Table) -> RString {
+        let table = &table.0.read();
+        // FIXME calculate capacity
+        let string = RString::buf_new(0);
+
+        let size = 1 + (table.ysize() > 0) as u32 + (table.zsize() > 0) as u32;
+        let header = [
+            size,
+            table.xsize() as u32,
+            table.ysize() as u32,
+            table.zsize() as u32,
+            table.len() as u32,
+        ];
+
+        string.cat(bytemuck::bytes_of(&header));
+        string.cat(bytemuck::cast_slice(table.data()));
+
+        string
+    }
 }
 
 pub fn bind(ruby: &magnus::Ruby) -> Result<(), magnus::Error> {
     let color = ruby.define_class("Color", ruby.class_object())?;
 
-    color.define_singleton_method("new", method!(color_new, -1))?;
-    color.define_singleton_method(
-        "inherited",
-        function!(magnus::RClass::undef_default_alloc_func, 1),
-    )?;
-    color.define_singleton_method("_load", function!(deserialize_color, 1))?;
-    color.define_method("_dump_data", method!(serialize_color, 0))?;
+    color.define_alloc_func::<Color>();
+    color.define_method("initialize", method!(Color::initialize, -1))?;
+    color.define_singleton_method("_load", function!(Color::deserialize, 1))?;
+    color.define_method("_dump_data", method!(Color::serialize, 0))?;
 
     let tone = ruby.define_class("Tone", ruby.class_object())?;
 
-    tone.define_singleton_method("new", method!(tone_new, -1))?;
-    tone.define_singleton_method(
-        "inherited",
-        function!(magnus::RClass::undef_default_alloc_func, 1),
-    )?;
-    tone.define_singleton_method("_load", function!(deserialize_tone, 1))?;
-    tone.define_method("_dump_data", method!(serialize_tone, 0))?;
+    tone.define_alloc_func::<Tone>();
+    tone.define_method("initialize", method!(Tone::initialize, -1))?;
+    tone.define_singleton_method("_load", function!(Tone::deserialize, 1))?;
+    tone.define_method("_dump_data", method!(Tone::serialize, 0))?;
 
     let table = ruby.define_class("Table", ruby.class_object())?;
 
-    table.define_singleton_method("_load", function!(deserialize_table, 1))?;
-    table.define_method("_dump_data", method!(serialize_table, 0))?;
+    table.define_alloc_func::<Table>();
+    table.define_method("initialize", method!(Table::initialize, -1))?;
+    table.define_singleton_method("_load", function!(Table::deserialize, 1))?;
+    table.define_method("_dump_data", method!(Table::serialize, 0))?;
+
+    table.define_method("xsize", method!(Table::xsize, 0))?;
+    table.define_method("ysize", method!(Table::ysize, 0))?;
+    table.define_method("zsize", method!(Table::zsize, 0))?;
+    table.define_method("resize", method!(Table::resize, -1))?;
+
+    table.define_method("[]", method!(Table::get, -1))?;
+    table.define_method("[]=", method!(Table::set, -1))?;
 
     Ok(())
 }

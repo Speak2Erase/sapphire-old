@@ -15,7 +15,13 @@
 // You should have received a copy of the GNU General Public License
 // along with sapphire.  If not, see <http://www.gnu.org/licenses/>.
 
-use std::ops::{Index, IndexMut};
+use std::{
+    ops::{Index, IndexMut},
+    sync::Arc,
+};
+
+use crossbeam::atomic::AtomicCell;
+use parking_lot::RwLock;
 
 #[derive(Clone, Copy, PartialEq, Debug, Default, bytemuck::Pod, bytemuck::Zeroable)]
 #[repr(C)]
@@ -26,33 +32,7 @@ pub struct Color {
     pub alpha: f64,
 }
 
-#[derive(Clone, Copy, PartialEq, Debug, Default, bytemuck::Pod, bytemuck::Zeroable)]
-#[repr(C)]
-pub struct Tone {
-    pub red: f64,
-    pub blue: f64,
-    pub green: f64,
-    pub grey: f64,
-}
-
-#[derive(Clone, Copy, PartialEq, Debug, Default)]
-pub struct Rect {
-    pub x: i32,
-    pub y: i32,
-    pub width: u32,
-    pub height: u32,
-}
-
-impl Rect {
-    pub fn new(x: i32, y: i32, width: u32, height: u32) -> Self {
-        Self {
-            x,
-            y,
-            width,
-            height,
-        }
-    }
-}
+pub type SharedColor = Arc<AtomicCell<Color>>;
 
 impl Color {
     pub const WHITE: Self = Self {
@@ -84,11 +64,88 @@ impl Color {
     };
 }
 
+impl From<SharedColor> for Color {
+    fn from(value: SharedColor) -> Self {
+        value.load()
+    }
+}
+
+impl From<Color> for SharedColor {
+    fn from(value: Color) -> Self {
+        Arc::new(AtomicCell::new(value))
+    }
+}
+
+#[derive(Clone, Copy, PartialEq, Debug, Default, bytemuck::Pod, bytemuck::Zeroable)]
+#[repr(C)]
+pub struct Tone {
+    pub red: f64,
+    pub blue: f64,
+    pub green: f64,
+    pub grey: f64,
+}
+
+pub type SharedTone = Arc<AtomicCell<Tone>>;
+
+impl From<SharedTone> for Tone {
+    fn from(value: SharedTone) -> Self {
+        value.load()
+    }
+}
+
+impl From<Tone> for SharedTone {
+    fn from(value: Tone) -> Self {
+        Arc::new(AtomicCell::new(value))
+    }
+}
+
+#[derive(Clone, Copy, PartialEq, Debug, Default)]
+pub struct Rect {
+    pub x: i32,
+    pub y: i32,
+    pub width: u32,
+    pub height: u32,
+}
+
+pub type SharedRect = Arc<AtomicCell<Rect>>;
+
+impl Rect {
+    pub fn new(x: i32, y: i32, width: u32, height: u32) -> Self {
+        Self {
+            x,
+            y,
+            width,
+            height,
+        }
+    }
+}
+
+impl From<SharedRect> for Rect {
+    fn from(value: SharedRect) -> Self {
+        value.load()
+    }
+}
+
+impl From<Rect> for SharedRect {
+    fn from(value: Rect) -> Self {
+        Arc::new(AtomicCell::new(value))
+    }
+}
+
+#[derive(Default)]
 pub struct Table {
     xsize: usize,
     ysize: usize,
     zsize: usize,
     data: Vec<i16>,
+}
+
+pub type SharedTable = Arc<RwLock<Table>>;
+
+impl From<Table> for SharedTable {
+    fn from(value: Table) -> Self {
+        Arc::new(RwLock::new(value))
+    }
 }
 
 impl Table {

@@ -5,7 +5,7 @@ mod audio;
 pub use audio::Audio;
 
 mod data;
-pub use data::{Color, Rect, Table, Tone};
+pub use data::{Color, Rect, SharedColor, SharedRect, SharedTable, SharedTone, Table, Tone};
 
 mod event_loop;
 pub use event_loop::{EventLoop, Events};

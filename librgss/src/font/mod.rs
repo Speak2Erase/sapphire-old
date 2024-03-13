@@ -15,7 +15,7 @@
 // You should have received a copy of the GNU General Public License
 // along with sapphire.  If not, see <http://www.gnu.org/licenses/>.
 
-use crate::Color;
+use crate::{Color, SharedColor};
 
 pub struct Fonts {
     font_system: glyphon::FontSystem,
@@ -25,20 +25,20 @@ pub struct Fonts {
     pub default: Font,
 }
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug)]
 pub struct Font {
     pub fonts: Vec<String>,
     pub size: u32,
     pub bold: bool,
     pub italic: bool,
-    pub color: Color,
+    pub color: SharedColor,
 
     #[cfg(feature = "rgss2")]
     pub shadow: bool,
     #[cfg(feature = "rgss3")]
-    pub outline: Color,
+    pub outline: SharedColor,
     #[cfg(feature = "rgss3")]
-    pub out_color: Color,
+    pub out_color: SharedColor,
 }
 
 impl Fonts {
@@ -54,13 +54,13 @@ impl Fonts {
             size: 22,
             bold: false,
             italic: false,
-            color: Color::WHITE,
+            color: Color::WHITE.into(),
             #[cfg(feature = "rgss2")] // FIXME not 100% accurate
             shadow: false,
             #[cfg(feature = "rgss3")]
-            outline: Color::WHITE,
+            outline: Color::WHITE.into(),
             #[cfg(feature = "rgss3")]
-            out_color: Color::GREY,
+            out_color: Color::GREY.into(),
         };
 
         Self {
