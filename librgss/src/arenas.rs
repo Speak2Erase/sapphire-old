@@ -17,8 +17,8 @@
 use slotmap::SlotMap;
 
 use crate::graphics::{
-    PlaneInternal, PlaneKey, SpriteInternal, SpriteKey, TileKey, TilemapInternal, ViewportInternal,
-    ViewportKey, WindowData, WindowKey,
+    BitmapInternal, BitmapKey, PlaneInternal, PlaneKey, SpriteInternal, SpriteKey, TileKey,
+    TilemapInternal, ViewportInternal, ViewportKey, WindowData, WindowKey,
 };
 
 #[derive(Default)]
@@ -27,6 +27,7 @@ pub struct Arenas {
     pub(crate) sprite: SlotMap<SpriteKey, SpriteInternal>,
     pub(crate) plane: SlotMap<PlaneKey, PlaneInternal>,
     pub(crate) tilemap: SlotMap<TileKey, TilemapInternal>,
+    pub(crate) bitmap: SlotMap<BitmapKey, BitmapInternal>,
     pub(crate) viewport: SlotMap<ViewportKey, ViewportInternal>,
     pub(crate) window: SlotMap<WindowKey, WindowData>,
 }

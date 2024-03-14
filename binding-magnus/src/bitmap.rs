@@ -15,54 +15,63 @@
 // You should have received a copy of the GNU General Public License
 // along with sapphire.  If not, see <http://www.gnu.org/licenses/>.
 
+use crossbeam::atomic::AtomicCell;
 use magnus::{function, method, typed_data::Obj, Class, Module, Object, TryConvert, Value};
-use std::sync::Arc;
 
-use crate::graphics::get_graphics;
+use crate::{get_arenas, graphics::get_graphics};
 
 #[magnus::wrap(class = "Bitmap", free_immediately, size)]
-pub struct Bitmap(Arc<librgss::Bitmap>);
+pub struct Bitmap(pub AtomicCell<librgss::Bitmap>);
 
-// FIXME allow bitmap subclassing
-fn bitmap_new(class: magnus::RClass, args: &[Value]) -> Result<Obj<Bitmap>, magnus::Error> {
-    magnus::scan_args::check_arity(args.len(), 1..=2)?;
-
-    let graphics = get_graphics().read();
-    let bitmap = match args {
-        [path] => {
-            let path = String::try_convert(*path)?;
-
-            let bitmap = librgss::Bitmap::new_path(&graphics, path);
-            Bitmap(bitmap)
-        }
-        [width, height] => {
-            let width = u32::try_convert(*width)?;
-            let height = u32::try_convert(*height)?;
-
-            let bitmap = librgss::Bitmap::new(&graphics, width, height);
-            Bitmap(bitmap)
-        }
-        _ => unreachable!(),
-    };
-
-    let wrapped = Obj::wrap_as(bitmap, class);
-    Ok(wrapped)
+impl Default for Bitmap {
+    fn default() -> Self {
+        Self(AtomicCell::new(librgss::Bitmap::null()))
+    }
 }
 
-fn disposed(bitmap: &Bitmap) -> bool {
-    false
+impl Bitmap {
+    fn initialize(rb_self: Obj<Bitmap>, args: &[Value]) -> Result<(), magnus::Error> {
+        magnus::scan_args::check_arity(args.len(), 1..=2)?;
+
+        let graphics = get_graphics().read();
+        let mut arenas = get_arenas().write();
+        let bitmap = match args {
+            [path] => {
+                let path = String::try_convert(*path)?;
+
+                librgss::Bitmap::new_path(&graphics, &mut arenas, path)
+            }
+            [width, height] => {
+                let width = u32::try_convert(*width)?;
+                let height = u32::try_convert(*height)?;
+
+                librgss::Bitmap::new(&graphics, &mut arenas, width, height)
+            }
+            _ => unreachable!(),
+        };
+
+        rb_self.0.store(bitmap);
+
+        Ok(())
+    }
+
+    fn clear(&self) {
+        // TODO
+    }
+
+    fn disposed(&self) -> bool {
+        false
+    }
 }
 
 pub fn bind(ruby: &magnus::Ruby) -> Result<(), magnus::Error> {
     let class = ruby.define_class("Bitmap", ruby.class_object())?;
 
-    class.define_singleton_method("new", method!(bitmap_new, -1))?;
-    class.define_singleton_method(
-        "inherited",
-        function!(magnus::RClass::undef_default_alloc_func, 1),
-    )?;
+    class.define_alloc_func::<Bitmap>();
+    class.define_method("initialize", method!(Bitmap::initialize, -1))?;
 
-    class.define_method("disposed?", method!(disposed, 0))?;
+    class.define_method("clear", method!(Bitmap::clear, 0))?;
+    class.define_method("disposed?", method!(Bitmap::disposed, 0))?;
 
     Ok(())
 }

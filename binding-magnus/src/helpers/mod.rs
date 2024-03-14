@@ -15,7 +15,7 @@
 // You should have received a copy of the GNU General Public License
 // along with sapphire.  If not, see <http://www.gnu.org/licenses/>.
 
-use crate::window::CursorRectProvider;
+use crate::{font::DefaultFontColorProvider, window::CursorRectProvider};
 mod macros;
 pub(crate) use macros::{provider_enum, provider_enum_impl};
 
@@ -98,4 +98,11 @@ provider_enum! {
   pub enum RectProvider: librgss::Rect {
     CursorRect(CursorRectProvider)
   }
+}
+
+provider_enum! {
+    #[derive(Clone, Copy)]
+    pub enum ColorProvider: librgss::Color {
+        FontDefault(DefaultFontColorProvider),
+    }
 }

@@ -15,7 +15,7 @@
 // You should have received a copy of the GNU General Public License
 // along with sapphire.  If not, see <http://www.gnu.org/licenses/>.
 
-use crate::{Color, SharedColor};
+use crate::Color;
 
 pub struct Fonts {
     font_system: glyphon::FontSystem,
@@ -27,18 +27,18 @@ pub struct Fonts {
 
 #[derive(Clone, Debug)]
 pub struct Font {
-    pub fonts: Vec<String>,
+    pub names: Vec<String>,
     pub size: u32,
     pub bold: bool,
     pub italic: bool,
-    pub color: SharedColor,
+    pub color: Color,
 
     #[cfg(feature = "rgss2")]
     pub shadow: bool,
     #[cfg(feature = "rgss3")]
-    pub outline: SharedColor,
+    pub outline: Color,
     #[cfg(feature = "rgss3")]
-    pub out_color: SharedColor,
+    pub out_color: Color,
 }
 
 impl Fonts {
@@ -50,17 +50,17 @@ impl Fonts {
         let cache = glyphon::SwashCache::new();
 
         let default = Font {
-            fonts: vec!["Arial".to_string()],
+            names: vec!["Arial".to_string()],
             size: 22,
             bold: false,
             italic: false,
-            color: Color::WHITE.into(),
+            color: Color::WHITE,
             #[cfg(feature = "rgss2")] // FIXME not 100% accurate
             shadow: false,
             #[cfg(feature = "rgss3")]
-            outline: Color::WHITE.into(),
+            outline: Color::WHITE,
             #[cfg(feature = "rgss3")]
-            out_color: Color::GREY.into(),
+            out_color: Color::GREY,
         };
 
         Self {
@@ -72,7 +72,15 @@ impl Fonts {
 }
 
 impl Font {
-    pub fn new(fonts: &Fonts) -> Self {
+    pub fn new(fonts: &Fonts, names: Vec<String>, size: u32) -> Self {
+        Self {
+            names,
+            size,
+            ..fonts.default
+        }
+    }
+
+    pub fn default(fonts: &Fonts) -> Self {
         fonts.default.clone()
     }
 }

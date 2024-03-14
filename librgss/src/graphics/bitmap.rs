@@ -15,20 +15,28 @@
 // You should have received a copy of the GNU General Public License
 // along with sapphire.  If not, see <http://www.gnu.org/licenses/>.
 
-use std::sync::Arc;
-
+use slotmap::Key;
 use wgpu::util::DeviceExt;
 
-use crate::Graphics;
+use crate::{Arenas, Graphics};
 
+#[derive(Clone, Copy)]
 pub struct Bitmap {
     // TODO investigate texture atlases
+    pub(crate) key: BitmapKey,
+}
+
+pub(crate) struct BitmapInternal {
     pub(crate) texture: wgpu::Texture,
     pub(crate) view: wgpu::TextureView,
 }
 
+slotmap::new_key_type! {
+    pub(crate) struct BitmapKey;
+}
+
 impl Bitmap {
-    pub fn new(graphics: &Graphics, width: u32, height: u32) -> Arc<Self> {
+    pub fn new(graphics: &Graphics, arenas: &mut Arenas, width: u32, height: u32) -> Self {
         // TODO handle bitmaps that are too large
         let texture = graphics
             .graphics_state
@@ -36,10 +44,17 @@ impl Bitmap {
             .create_texture(&bitmap_texture_descriptor(width, height));
         let view = texture.create_view(&wgpu::TextureViewDescriptor::default());
 
-        Arc::new(Self { texture, view })
+        let internal = BitmapInternal { texture, view };
+        let key = arenas.bitmap.insert(internal);
+
+        Self { key }
     }
 
-    pub fn new_path(graphics: &Graphics, path: impl AsRef<camino::Utf8Path>) -> Arc<Self> {
+    pub fn new_path(
+        graphics: &Graphics,
+        arenas: &mut Arenas,
+        path: impl AsRef<camino::Utf8Path>,
+    ) -> Self {
         // TODO handle errors
         let mut image_file = graphics.filesystem.read_file(path).unwrap();
 
@@ -56,7 +71,16 @@ impl Bitmap {
         );
         let view = texture.create_view(&wgpu::TextureViewDescriptor::default());
 
-        Arc::new(Self { texture, view })
+        let internal = BitmapInternal { texture, view };
+        let key = arenas.bitmap.insert(internal);
+
+        Self { key }
+    }
+
+    pub fn null() -> Self {
+        Self {
+            key: BitmapKey::null(),
+        }
     }
 }
 

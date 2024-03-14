@@ -15,16 +15,14 @@
 // You should have received a copy of the GNU General Public License
 // along with sapphire.  If not, see <http://www.gnu.org/licenses/>.
 
-use std::cell::RefCell;
-
 use crossbeam::atomic::AtomicCell;
 use magnus::{function, method, Class, Module, Object, RString, TryConvert, Value};
 
-use crate::helpers::{Provider, ProviderVal, RectProvider};
+use crate::helpers::{ColorProvider, Provider, ProviderVal, RectProvider};
 
 #[derive(Default)]
 #[magnus::wrap(class = "Color", size, free_immediately)]
-pub struct Color(pub librgss::SharedColor);
+pub struct Color(pub AtomicCell<ProviderVal<librgss::Color, ColorProvider>>);
 
 impl Color {
     fn initialize(&self, args: &[Value]) -> Result<(), magnus::Error> {
@@ -39,7 +37,9 @@ impl Color {
             green,
             alpha: alpha.unwrap_or(255.0),
         };
-        self.0.store(color);
+
+        let mut provider = self.0.load();
+        provider.provide_mut(|c| *c = color);
 
         Ok(())
     }
@@ -50,13 +50,23 @@ impl Color {
         let bytes = unsafe { bytes.as_slice() };
 
         let color: librgss::Color = *bytemuck::from_bytes(bytes);
-        Color(color.into())
+        Color(ProviderVal::val(color).into())
     }
 
     fn serialize(color: &Color) -> RString {
-        let color = color.0.load();
+        let provider = color.0.load();
+        let color = provider.provide_copy();
         let bytes = bytemuck::bytes_of(&color);
         RString::from_slice(bytes)
+    }
+
+    pub fn from_provider(p: impl Into<ColorProvider>) -> Self {
+        let provider = ProviderVal::provider(p);
+        Self(AtomicCell::new(provider))
+    }
+
+    pub fn as_color(&self) -> librgss::Color {
+        self.0.load().provide_copy()
     }
 }
 

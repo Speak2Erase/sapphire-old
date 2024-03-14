@@ -11,13 +11,13 @@ mod event_loop;
 pub use event_loop::{EventLoop, Events};
 
 mod filesystem;
-pub use filesystem::{Error, File, FileSystem};
+pub use filesystem::{Error as FileSystemError, File, FileSystem};
 
 mod font;
 pub use font::{Font, Fonts};
 
-pub mod graphics;
-pub use graphics::{Bitmap, Graphics, Plane, Sprite, Tilemap, Viewport, Window};
+mod graphics;
+pub use graphics::{Bitmap, Graphics, Plane, Sprite, Tilemap, Viewport, Window, WindowData};
 
 mod input;
 pub use input::Input;

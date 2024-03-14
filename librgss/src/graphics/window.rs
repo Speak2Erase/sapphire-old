@@ -18,7 +18,7 @@
 use slotmap::Key;
 
 use super::{DrawableRef, Graphics, Viewport, Z};
-use crate::{Arenas, Rect};
+use crate::{Arenas, Bitmap, Rect};
 
 #[derive(Clone, Copy)]
 pub struct Window {
@@ -29,6 +29,8 @@ pub struct WindowData {
     pub rect: Rect,
     pub cursor_rect: Rect,
     pub active: bool,
+    pub windowskin: Option<Bitmap>,
+    pub contents: Option<Bitmap>,
     viewport: Viewport,
     z: Z,
 }
@@ -46,6 +48,8 @@ impl Window {
             rect: Rect::default(),
             cursor_rect: Rect::default(),
             active: false,
+            windowskin: None,
+            contents: None,
             viewport,
             z,
         };
@@ -65,6 +69,16 @@ impl Window {
     pub fn null() -> Self {
         Self {
             key: WindowKey::null(),
+        }
+    }
+
+    pub fn viewport(&self, graphics: &Graphics, arenas: &Arenas) -> Option<Viewport> {
+        let internal = arenas.window.get(self.key).expect(Arenas::WINDOW_MISSING);
+
+        if internal.viewport == graphics.global_viewport {
+            None
+        } else {
+            Some(internal.viewport)
         }
     }
 

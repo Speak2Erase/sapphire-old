@@ -59,6 +59,8 @@ impl Provider<librgss::Rect> for CursorRectProvider {
 
 impl Window {
     fn initialize(rb_self: Obj<Window>, args: &[magnus::Value]) -> Result<(), magnus::Error> {
+        let ruby = magnus::Ruby::get_with(rb_self);
+
         let args = magnus::scan_args::scan_args::<(), _, (), (), (), ()>(args)?;
         let (viewport,): (Option<&Viewport>,) = args.optional;
 
@@ -71,6 +73,9 @@ impl Window {
         let provider = CursorRectProvider(window);
         let rect = Rect::from_provider(provider);
         rb_self.ivar_set("cursor_rect", rect)?;
+
+        rb_self.ivar_set("contents", ruby.qnil())?;
+        rb_self.ivar_set("windowskin", ruby.qnil())?;
 
         Ok(())
     }
@@ -157,13 +162,65 @@ impl Window {
         window.cursor_rect = val;
         Ok(())
     }
+
+    fn windowskin(rb_self: Obj<Window>) -> Result<magnus::Value, magnus::Error> {
+        // we fetch the ivar so we don't return multiple Bitmap objects.
+        // ruby.
+        rb_self.ivar_get("windowskin")
+    }
+
+    fn set_windowskin(
+        rb_self: Obj<Window>,
+        bitmap: Option<Obj<Bitmap>>,
+    ) -> Result<(), magnus::Error> {
+        let ruby = magnus::Ruby::get_with(rb_self);
+        let mut arenas = get_arenas().write();
+        let window = rb_self.get_data_mut(&mut arenas)?;
+
+        match bitmap {
+            Some(b) => {
+                window.windowskin = Some(b.0.load());
+                rb_self.ivar_set("windowskin", b)
+            }
+            None => {
+                window.windowskin = None;
+                rb_self.ivar_set("windowskin", ruby.qnil())
+            }
+        }
+    }
+
+    fn contents(rb_self: Obj<Window>) -> Result<magnus::Value, magnus::Error> {
+        // we fetch the ivar so we don't return multiple Bitmap objects.
+        // ruby.
+        rb_self.ivar_get("contents")
+    }
+
+    fn set_contents(
+        rb_self: Obj<Window>,
+        bitmap: Option<Obj<Bitmap>>,
+    ) -> Result<(), magnus::Error> {
+        let ruby = magnus::Ruby::get_with(rb_self);
+        let mut arenas = get_arenas().write();
+        let window = rb_self.get_data_mut(&mut arenas)?;
+
+        match bitmap {
+            Some(b) => {
+                window.contents = Some(b.0.load());
+                rb_self.ivar_set("contents", b)
+            }
+            None => {
+                window.contents = None;
+                rb_self.ivar_set("contents", ruby.qnil())
+            }
+        }
+    }
 }
 
 impl Window {
     fn get_data<'g>(
         &self,
         arenas: &'g librgss::Arenas,
-    ) -> Result<&'g librgss::graphics::WindowData, magnus::Error> {
+    ) -> Result<&'g librgss::WindowData, magnus::Error> {
         let window = self.0.load();
         window.get_data(arenas).ok_or_else(|| {
             magnus::Error::new(
@@ -176,7 +233,7 @@ impl Window {
     fn get_data_mut<'g>(
         &self,
         arenas: &'g mut librgss::Arenas,
-    ) -> Result<&'g mut librgss::graphics::WindowData, magnus::Error> {
+    ) -> Result<&'g mut librgss::WindowData, magnus::Error> {
         let window = self.0.load();
         window.get_data_mut(arenas).ok_or_else(|| {
             magnus::Error::new(
@@ -216,11 +273,11 @@ pub fn bind(ruby: &magnus::Ruby) -> Result<(), magnus::Error> {
     class.define_method("z", method!(Window::z, 0))?;
     class.define_method("z=", method!(Window::set_z, 1))?;
 
-    class.define_method("windowskin", method!(null_getter, 0))?;
-    class.define_method("windowskin=", method!(null_setter, 1))?;
+    class.define_method("windowskin", method!(Window::windowskin, 0))?;
+    class.define_method("windowskin=", method!(Window::set_windowskin, 1))?;
 
-    class.define_method("contents", method!(null_getter, 0))?;
-    class.define_method("contents=", method!(null_setter, 1))?;
+    class.define_method("contents", method!(Window::contents, 0))?;
+    class.define_method("contents=", method!(Window::set_contents, 1))?;
 
     class.define_method("visible", method!(null_getter, 0))?;
     class.define_method("visible=", method!(null_setter, 1))?;

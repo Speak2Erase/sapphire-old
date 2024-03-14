@@ -15,8 +15,8 @@
 // You should have received a copy of the GNU General Public License
 // along with sapphire.  If not, see <http://www.gnu.org/licenses/>.
 
-use crate::data::Color;
-use magnus::{function, value::ReprValue, Object, TryConvert};
+use crate::{data::Color, helpers::Provider};
+use magnus::{class, function, method, typed_data::Obj, value::ReprValue, Object, TryConvert};
 use parking_lot::RwLock;
 use std::sync::OnceLock;
 
@@ -30,112 +30,173 @@ pub fn get_fonts() -> &'static RwLock<librgss::Fonts> {
         .expect("fonts static not set! please report how you encountered this crash")
 }
 
-fn default_name() -> magnus::Value {
-    // This function is only exposed to Ruby. It is not possible to call this without it being called on a Ruby thread
-    let ruby = unsafe { magnus::Ruby::get_unchecked() };
+#[magnus::wrap(class = "Bitmap", free_immediately, size)]
+pub struct Font(pub RwLock<librgss::Font>); // FIXME rwlock is bad. do we want to use an arena instead?
 
-    let fonts = get_fonts().read();
-    match fonts.default.fonts.as_slice() {
-        [name] => ruby.str_new(name).as_value(),
-        names => ruby
-            .ary_from_iter(names.iter().map(String::as_str))
-            .as_value(),
+impl Default for Font {
+    fn default() -> Self {
+        let fonts = get_fonts().read();
+        let font = librgss::Font::default(&fonts);
+        Self(RwLock::new(font))
     }
 }
 
-fn set_default_name(arg: magnus::Value) -> Result<(), magnus::Error> {
-    let ruby = magnus::Ruby::get_with(arg);
+#[derive(Clone, Copy)]
+pub struct DefaultFontColorProvider;
 
-    let mut fonts = get_fonts().write();
-    if arg.is_kind_of(ruby.class_array()) {
-        let names = Vec::<String>::try_convert(arg)?;
-        fonts.default.fonts = names;
+impl Provider<librgss::Color> for DefaultFontColorProvider {
+    fn provide<F, R>(&self, f: F) -> R
+    where
+        F: FnOnce(&librgss::Color) -> R,
+    {
+        let fonts = get_fonts().read();
+        f(&fonts.default.color)
+    }
 
-        Ok(())
-    } else if arg.is_kind_of(ruby.class_string()) {
-        let name = String::try_convert(arg)?;
-        fonts.default.fonts = vec![name];
-
-        Ok(())
-    } else {
-        // TODO proper error message
-        let error = magnus::Error::new(ruby.exception_type_error(), "dsajfjlsdfb");
-        Err(error)
+    fn provide_mut<F, R>(&mut self, f: F) -> R
+    where
+        F: FnOnce(&mut librgss::Color) -> R,
+    {
+        let mut fonts = get_fonts().write();
+        f(&mut fonts.default.color)
     }
 }
 
-fn default_size() -> u32 {
-    get_fonts().read().default.size
-}
+impl Font {
+    // A lot of this behavior is copy-pasted from mkxp.
+    // See https://github.com/Ancurio/mkxp/blob/ac8f4b15946e37f0563653e6bb288d9a5a380e5b/binding-mri/font-binding.cpp#L72-L110
+    fn initialize(rb_self: Obj<Self>, args: &[magnus::Value]) -> Result<(), magnus::Error> {
+        let fonts = get_fonts().read();
+        let args = magnus::scan_args::scan_args::<(), _, (), (), (), ()>(args)?;
 
-fn set_default_size(size: u32) {
-    get_fonts().write().default.size = size
-}
+        let (names, size) = args.optional;
 
-fn default_bold() -> bool {
-    get_fonts().read().default.bold
-}
+        // We store names in an ivar to ensure it is identical (object wise).
+        let names_val = names
+            .map(Ok)
+            .unwrap_or_else(|| rb_self.class().ivar_get("default_name"))?;
+        let names = Self::collect_names(names_val)?;
+        rb_self.ivar_set("name", names_val)?;
 
-fn set_default_bold(bold: bool) {
-    get_fonts().write().default.bold = bold
-}
+        let size = size.unwrap_or(fonts.default.size);
 
-fn default_italic() -> bool {
-    get_fonts().read().default.italic
-}
+        *rb_self.0.write() = librgss::Font::new(&fonts, names, size);
 
-fn set_default_italic(italic: bool) {
-    get_fonts().write().default.italic = italic
-}
+        Ok(())
+    }
 
-fn default_color() -> Color {
-    let fonts = get_fonts().read();
-    let color = fonts.default.color.clone();
-    Color(color)
-}
+    fn initialize_class_vars(class: magnus::RClass) -> Result<(), magnus::Error> {
+        let fonts = get_fonts().read();
 
-fn set_default_color(color: &Color) {
-    let mut fonts = get_fonts().write();
-    let color = color.0.clone();
-    fonts.default.color = color;
-}
+        match fonts.default.names.as_slice() {
+            [name] => class.ivar_set("default_name", name.as_str())?,
+            names => {
+                let ary = magnus::RArray::from_iter(names.iter().map(String::as_str));
+                class.ivar_set("default_name", ary)?
+            }
+        }
 
-#[cfg(feature = "rgss2")]
-fn default_shadow() -> bool {
-    get_fonts().read().default.shadow
-}
+        let color = Color::from_provider(DefaultFontColorProvider);
+        class.ivar_set("default_color", color)?;
 
-#[cfg(feature = "rgss2")]
-fn set_default_shadow(shadow: bool) {
-    get_fonts().write().default.shadow = shadow
-}
+        Ok(())
+    }
 
-#[cfg(feature = "rgss3")]
-fn default_outline() -> Color {
-    let fonts = get_fonts().read();
-    let color = fonts.default.outline.clone();
-    Color(color)
-}
+    fn collect_names(value: magnus::Value) -> Result<Vec<String>, magnus::Error> {
+        let ruby = magnus::Ruby::get_with(value);
 
-#[cfg(feature = "rgss3")]
-fn set_default_outline(color: &Color) {
-    let mut fonts = get_fonts().write();
-    let color = color.0.clone();
-    fonts.default.outline = color;
-}
+        if value.is_kind_of(ruby.class_array()) {
+            let names = Vec::<String>::try_convert(value)?;
+            Ok(names)
+        } else if value.is_kind_of(ruby.class_string()) {
+            let name = String::try_convert(value)?;
+            Ok(vec![name])
+        } else {
+            // TODO proper error message
+            let error = magnus::Error::new(ruby.exception_type_error(), "dsajfjlsdfb");
+            Err(error)
+        }
+    }
 
-#[cfg(feature = "rgss3")]
-fn default_out_color() -> Color {
-    let fonts = get_fonts().read();
-    let color = fonts.default.out_color.clone();
-    Color(color)
-}
+    fn default_name(class: magnus::RClass) -> Result<magnus::Value, magnus::Error> {
+        class.ivar_get("default_name")
+    }
 
-#[cfg(feature = "rgss3")]
-fn set_default_out_color(color: &Color) {
-    let mut fonts = get_fonts().write();
-    let color = color.0.clone();
-    fonts.default.out_color = color;
+    fn set_default_name(class: magnus::RClass, arg: magnus::Value) -> Result<(), magnus::Error> {
+        let names = Self::collect_names(arg)?;
+        let mut fonts = get_fonts().write();
+        fonts.default.names = names;
+
+        Ok(())
+    }
+
+    fn default_size() -> u32 {
+        get_fonts().read().default.size
+    }
+
+    fn set_default_size(size: u32) {
+        get_fonts().write().default.size = size
+    }
+
+    fn default_bold() -> bool {
+        get_fonts().read().default.bold
+    }
+
+    fn set_default_bold(bold: bool) {
+        get_fonts().write().default.bold = bold
+    }
+
+    fn default_italic() -> bool {
+        get_fonts().read().default.italic
+    }
+
+    fn set_default_italic(italic: bool) {
+        get_fonts().write().default.italic = italic
+    }
+
+    fn default_color(class: magnus::RClass) -> Result<magnus::Value, magnus::Error> {
+        class.ivar_get("default_color")
+    }
+
+    fn set_default_color(class: magnus::RClass, color: &Color) {
+        let mut fonts = get_fonts().write();
+        let color = color.as_color();
+        fonts.default.color = color;
+    }
+
+    #[cfg(feature = "rgss2")]
+    fn default_shadow() -> bool {
+        get_fonts().read().default.shadow
+    }
+
+    #[cfg(feature = "rgss2")]
+    fn set_default_shadow(shadow: bool) {
+        get_fonts().write().default.shadow = shadow
+    }
+
+    #[cfg(feature = "rgss3")]
+    fn default_outline(class: magnus::RClass) -> Result<magnus::Value, magnus::Error> {
+        class.ivar_get("default_outline")
+    }
+
+    #[cfg(feature = "rgss3")]
+    fn set_default_outline(class: magnus::RClass, color: &Color) {
+        let mut fonts = get_fonts().write();
+        let color = color.as_color();
+        fonts.default.outline = color;
+    }
+
+    #[cfg(feature = "rgss3")]
+    fn default_out_color(class: magnus::RClass) -> Result<magnus::Value, magnus::Error> {
+        class.ivar_get("default_out_color")
+    }
+
+    #[cfg(feature = "rgss3")]
+    fn set_default_out_color(class: magnus::RClass, color: &Color) {
+        let mut fonts = get_fonts().write();
+        let color = color.as_color();
+        fonts.default.out_color = color;
+    }
 }
 
 pub fn bind(ruby: &magnus::Ruby, fonts: librgss::Fonts) -> Result<(), magnus::Error> {
@@ -146,34 +207,39 @@ pub fn bind(ruby: &magnus::Ruby, fonts: librgss::Fonts) -> Result<(), magnus::Er
         panic!("fonts static already set! this is not supposed to happen")
     }
 
-    class.define_singleton_method("default_name", function!(default_name, 0))?;
-    class.define_singleton_method("default_name=", function!(set_default_name, 1))?;
+    Font::initialize_class_vars(class)?;
 
-    class.define_singleton_method("default_size", function!(default_size, 0))?;
-    class.define_singleton_method("default_size=", function!(set_default_size, 1))?;
+    class.define_singleton_method("default_name", method!(Font::default_name, 0))?;
+    class.define_singleton_method("default_name=", method!(Font::set_default_name, 1))?;
 
-    class.define_singleton_method("default_bold", function!(default_bold, 0))?;
-    class.define_singleton_method("default_bold=", function!(set_default_bold, 1))?;
+    class.define_singleton_method("default_size", function!(Font::default_size, 0))?;
+    class.define_singleton_method("default_size=", function!(Font::set_default_size, 1))?;
 
-    class.define_singleton_method("default_italic", function!(default_italic, 0))?;
-    class.define_singleton_method("default_italic=", function!(set_default_italic, 1))?;
+    class.define_singleton_method("default_bold", function!(Font::default_bold, 0))?;
+    class.define_singleton_method("default_bold=", function!(Font::set_default_bold, 1))?;
 
-    class.define_singleton_method("default_color", function!(default_color, 0))?;
-    class.define_singleton_method("default_color=", function!(set_default_color, 1))?;
+    class.define_singleton_method("default_italic", function!(Font::default_italic, 0))?;
+    class.define_singleton_method("default_italic=", function!(Font::set_default_italic, 1))?;
+
+    class.define_singleton_method("default_color", method!(Font::default_color, 0))?;
+    class.define_singleton_method("default_color=", method!(Font::set_default_color, 1))?;
 
     #[cfg(feature = "rgss2")]
     {
-        class.define_singleton_method("default_shadow", function!(default_shadow, 0))?;
-        class.define_singleton_method("default_shadow=", function!(set_default_shadow, 1))?;
+        class.define_singleton_method("default_shadow", function!(Font::default_shadow, 0))?;
+        class.define_singleton_method("default_shadow=", function!(Font::set_default_shadow, 1))?;
     }
 
     #[cfg(feature = "rgss3")]
     {
-        class.define_singleton_method("default_outline", function!(default_outline, 0))?;
-        class.define_singleton_method("default_outline=", function!(set_default_outline, 1))?;
+        class.define_singleton_method("default_outline", method!(Font::default_outline, 0))?;
+        class.define_singleton_method("default_outline=", method!(Font::set_default_outline, 1))?;
 
-        class.define_singleton_method("default_out_color", function!(default_out_color, 0))?;
-        class.define_singleton_method("default_out_color=", function!(set_default_out_color, 1))?;
+        class.define_singleton_method("default_out_color", method!(Font::default_out_color, 0))?;
+        class.define_singleton_method(
+            "default_out_color=",
+            method!(Font::set_default_out_color, 1),
+        )?;
     }
 
     Ok(())

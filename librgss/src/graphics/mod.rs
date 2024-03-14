@@ -26,6 +26,7 @@ use crate::{EventLoop, FileSystem, Rect};
 
 mod bitmap;
 pub use bitmap::Bitmap;
+pub(crate) use bitmap::{BitmapInternal, BitmapKey};
 
 mod drawable;
 use drawable::{Drawable, DrawableMut, DrawableRef};
