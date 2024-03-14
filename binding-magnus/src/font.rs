@@ -15,8 +15,14 @@
 // You should have received a copy of the GNU General Public License
 // along with sapphire.  If not, see <http://www.gnu.org/licenses/>.
 
-use crate::{data::Color, helpers::Provider};
-use magnus::{class, function, method, typed_data::Obj, value::ReprValue, Object, TryConvert};
+use crate::{
+    bitmap::BitmapFontProvider,
+    data::Color,
+    helpers::{Provider, ProviderVal},
+};
+use magnus::{
+    class, function, method, typed_data::Obj, value::ReprValue, Class, Module, Object, TryConvert,
+};
 use parking_lot::RwLock;
 use std::sync::OnceLock;
 
@@ -30,20 +36,24 @@ pub fn get_fonts() -> &'static RwLock<librgss::Fonts> {
         .expect("fonts static not set! please report how you encountered this crash")
 }
 
-#[magnus::wrap(class = "Bitmap", free_immediately, size)]
-pub struct Font(pub RwLock<librgss::Font>); // FIXME rwlock is bad. do we want to use an arena instead?
+// FIXME this is pretty complicated. do we put this in an arena instead?
+// putting this in an arena would convert font to a "disposable" and in rgss font is definitely not disposable.
+// what do we do about that?
+#[magnus::wrap(class = "Font", free_immediately, size)]
+pub struct Font(pub RwLock<ProviderVal<librgss::Font, BitmapFontProvider>>);
 
 impl Default for Font {
     fn default() -> Self {
         let fonts = get_fonts().read();
         let font = librgss::Font::default(&fonts);
-        Self(RwLock::new(font))
+        Self(RwLock::new(ProviderVal::val(font)))
     }
 }
 
 #[derive(Clone, Copy)]
 pub struct DefaultFontColorProvider;
 
+// TODO macro?
 impl Provider<librgss::Color> for DefaultFontColorProvider {
     fn provide<F, R>(&self, f: F) -> R
     where
@@ -80,11 +90,23 @@ impl Font {
 
         let size = size.unwrap_or(fonts.default.size);
 
-        *rb_self.0.write() = librgss::Font::new(&fonts, names, size);
+        let font = librgss::Font::new(&fonts, names, size);
+        rb_self.0.write().provide_mut(|f| *f = font);
 
         Ok(())
     }
 
+    fn color(rb_self: Obj<Self>) -> Result<magnus::Value, magnus::Error> {
+        rb_self.ivar_get("color")
+    }
+
+    pub fn from_provider(p: impl Into<BitmapFontProvider>) -> Self {
+        let provider = ProviderVal::provider(p);
+        Self(RwLock::new(provider))
+    }
+}
+
+impl Font {
     fn initialize_class_vars(class: magnus::RClass) -> Result<(), magnus::Error> {
         let fonts = get_fonts().read();
 
@@ -127,6 +149,8 @@ impl Font {
         let mut fonts = get_fonts().write();
         fonts.default.names = names;
 
+        class.ivar_set("name", arg)?;
+
         Ok(())
     }
 
@@ -158,7 +182,7 @@ impl Font {
         class.ivar_get("default_color")
     }
 
-    fn set_default_color(class: magnus::RClass, color: &Color) {
+    fn set_default_color(color: &Color) {
         let mut fonts = get_fonts().write();
         let color = color.as_color();
         fonts.default.color = color;
@@ -180,7 +204,7 @@ impl Font {
     }
 
     #[cfg(feature = "rgss3")]
-    fn set_default_outline(class: magnus::RClass, color: &Color) {
+    fn set_default_outline(color: &Color) {
         let mut fonts = get_fonts().write();
         let color = color.as_color();
         fonts.default.outline = color;
@@ -192,7 +216,7 @@ impl Font {
     }
 
     #[cfg(feature = "rgss3")]
-    fn set_default_out_color(class: magnus::RClass, color: &Color) {
+    fn set_default_out_color(color: &Color) {
         let mut fonts = get_fonts().write();
         let color = color.as_color();
         fonts.default.out_color = color;
@@ -209,6 +233,9 @@ pub fn bind(ruby: &magnus::Ruby, fonts: librgss::Fonts) -> Result<(), magnus::Er
 
     Font::initialize_class_vars(class)?;
 
+    class.define_alloc_func::<Font>();
+    class.define_method("initialize", method!(Font::initialize, -1))?;
+
     class.define_singleton_method("default_name", method!(Font::default_name, 0))?;
     class.define_singleton_method("default_name=", method!(Font::set_default_name, 1))?;
 
@@ -222,7 +249,7 @@ pub fn bind(ruby: &magnus::Ruby, fonts: librgss::Fonts) -> Result<(), magnus::Er
     class.define_singleton_method("default_italic=", function!(Font::set_default_italic, 1))?;
 
     class.define_singleton_method("default_color", method!(Font::default_color, 0))?;
-    class.define_singleton_method("default_color=", method!(Font::set_default_color, 1))?;
+    class.define_singleton_method("default_color=", function!(Font::set_default_color, 1))?;
 
     #[cfg(feature = "rgss2")]
     {
@@ -233,12 +260,13 @@ pub fn bind(ruby: &magnus::Ruby, fonts: librgss::Fonts) -> Result<(), magnus::Er
     #[cfg(feature = "rgss3")]
     {
         class.define_singleton_method("default_outline", method!(Font::default_outline, 0))?;
-        class.define_singleton_method("default_outline=", method!(Font::set_default_outline, 1))?;
+        class
+            .define_singleton_method("default_outline=", function!(Font::set_default_outline, 1))?;
 
         class.define_singleton_method("default_out_color", method!(Font::default_out_color, 0))?;
         class.define_singleton_method(
             "default_out_color=",
-            method!(Font::set_default_out_color, 1),
+            function!(Font::set_default_out_color, 1),
         )?;
     }
 

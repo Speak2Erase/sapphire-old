@@ -18,7 +18,7 @@
 use slotmap::Key;
 use wgpu::util::DeviceExt;
 
-use crate::{Arenas, Graphics};
+use crate::{Arenas, Font, Fonts, Graphics};
 
 #[derive(Clone, Copy)]
 pub struct Bitmap {
@@ -29,6 +29,7 @@ pub struct Bitmap {
 pub(crate) struct BitmapInternal {
     pub(crate) texture: wgpu::Texture,
     pub(crate) view: wgpu::TextureView,
+    pub(crate) font: Font,
 }
 
 slotmap::new_key_type! {
@@ -36,7 +37,13 @@ slotmap::new_key_type! {
 }
 
 impl Bitmap {
-    pub fn new(graphics: &Graphics, arenas: &mut Arenas, width: u32, height: u32) -> Self {
+    pub fn new(
+        graphics: &Graphics,
+        fonts: &Fonts,
+        arenas: &mut Arenas,
+        width: u32,
+        height: u32,
+    ) -> Self {
         // TODO handle bitmaps that are too large
         let texture = graphics
             .graphics_state
@@ -44,7 +51,11 @@ impl Bitmap {
             .create_texture(&bitmap_texture_descriptor(width, height));
         let view = texture.create_view(&wgpu::TextureViewDescriptor::default());
 
-        let internal = BitmapInternal { texture, view };
+        let internal = BitmapInternal {
+            texture,
+            view,
+            font: Font::default(fonts),
+        };
         let key = arenas.bitmap.insert(internal);
 
         Self { key }
@@ -52,6 +63,7 @@ impl Bitmap {
 
     pub fn new_path(
         graphics: &Graphics,
+        fonts: &Fonts,
         arenas: &mut Arenas,
         path: impl AsRef<camino::Utf8Path>,
     ) -> Self {
@@ -71,7 +83,11 @@ impl Bitmap {
         );
         let view = texture.create_view(&wgpu::TextureViewDescriptor::default());
 
-        let internal = BitmapInternal { texture, view };
+        let internal = BitmapInternal {
+            texture,
+            view,
+            font: Font::default(fonts),
+        };
         let key = arenas.bitmap.insert(internal);
 
         Self { key }
@@ -81,6 +97,18 @@ impl Bitmap {
         Self {
             key: BitmapKey::null(),
         }
+    }
+
+    pub fn font<'a>(&self, arenas: &'a Arenas) -> &'a Font {
+        // FIXME
+        let internal = arenas.bitmap.get(self.key).unwrap();
+        &internal.font
+    }
+
+    pub fn font_mut<'a>(&self, arenas: &'a mut Arenas) -> &'a mut Font {
+        // FIXME
+        let internal = arenas.bitmap.get_mut(self.key).unwrap();
+        &mut internal.font
     }
 }
 

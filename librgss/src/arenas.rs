@@ -23,7 +23,6 @@ use crate::graphics::{
 
 #[derive(Default)]
 pub struct Arenas {
-    // FIXME use generational arenas instead to avoid aba
     pub(crate) sprite: SlotMap<SpriteKey, SpriteInternal>,
     pub(crate) plane: SlotMap<PlaneKey, PlaneInternal>,
     pub(crate) tilemap: SlotMap<TileKey, TilemapInternal>,
