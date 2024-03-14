@@ -4,6 +4,30 @@ use color_eyre::Section;
 use pollster::FutureExt;
 
 fn main() -> std::process::ExitCode {
+    #[cfg(feature = "deadlock_detection")]
+    std::thread::Builder::new()
+        .name("sapphire deadlock detection".to_string())
+        .spawn(|| {
+            //
+            let mut deadlocks = parking_lot::deadlock::check_deadlock();
+            while deadlocks.is_empty() {
+                std::thread::sleep(std::time::Duration::from_secs(10));
+                deadlocks = parking_lot::deadlock::check_deadlock();
+            }
+
+            println!("{} deadlocks detected", deadlocks.len());
+            for (i, threads) in deadlocks.iter().enumerate() {
+                println!("Deadlock #{}", i);
+                for t in threads {
+                    println!("Thread Id {:#?}", t.thread_id());
+                    println!("{:#?}", t.backtrace());
+                }
+            }
+
+            std::process::abort();
+        })
+        .expect("failed to spawn deadlock thread");
+
     let result = run();
     match result {
         Ok(_) => std::process::ExitCode::SUCCESS,
