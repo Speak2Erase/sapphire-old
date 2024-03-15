@@ -74,6 +74,8 @@ fn transition(args: &[Value]) -> Result<(), magnus::Error> {
     Ok(())
 }
 
+fn frame_reset() {}
+
 pub fn bind(ruby: &magnus::Ruby, graphics: librgss::Graphics) -> Result<(), magnus::Error> {
     let module = ruby.define_module("Graphics")?;
 
@@ -83,7 +85,7 @@ pub fn bind(ruby: &magnus::Ruby, graphics: librgss::Graphics) -> Result<(), magn
     }
 
     module.define_module_function("update", function!(update, 0))?;
-
+    module.define_module_function("frame_reset", function!(frame_reset, 0))?;
     module.define_module_function("transition", function!(transition, -1))?;
 
     module.define_module_function("fullscreen", function!(fullscreen, 0))?;

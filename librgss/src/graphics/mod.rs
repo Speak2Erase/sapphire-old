@@ -62,6 +62,7 @@ pub struct Graphics {
     pub frame_count: u64,
     pub(crate) graphics_state: GraphicsState,
     pub(crate) global_viewport: Viewport,
+    pub(crate) bitmap_ops: wgpu::CommandEncoder,
 }
 
 pub(crate) struct GraphicsState {
@@ -71,6 +72,11 @@ pub(crate) struct GraphicsState {
     pub(crate) device: wgpu::Device,
     pub(crate) queue: wgpu::Queue,
 }
+
+const BITMAP_OPS_DESCRIPTOR: wgpu::CommandEncoderDescriptor<'static> =
+    wgpu::CommandEncoderDescriptor {
+        label: Some("bitmap operations (this frame)"),
+    };
 
 impl Graphics {
     pub async fn new(
@@ -91,6 +97,10 @@ impl Graphics {
             key: arenas.viewport.insert(global_viewport),
         };
 
+        let bitmap_ops = graphics_state
+            .device
+            .create_command_encoder(&BITMAP_OPS_DESCRIPTOR);
+
         let mut this = Self {
             window,
             filesystem,
@@ -99,14 +109,21 @@ impl Graphics {
             frame_count: 0,
             graphics_state,
             global_viewport,
+            bitmap_ops,
         };
-        // render, so the window is black
         this.render();
 
         Ok(this)
     }
 
     fn render(&mut self) {
+        let new_bitmap_ops = self
+            .graphics_state
+            .device
+            .create_command_encoder(&BITMAP_OPS_DESCRIPTOR);
+        let bitmap_ops = std::mem::replace(&mut self.bitmap_ops, new_bitmap_ops);
+        let bitmap_ops = bitmap_ops.finish();
+
         // FIXME handle
         let Ok(surface_texture) = self.graphics_state.surface.get_current_texture() else {
             return;
@@ -139,7 +156,7 @@ impl Graphics {
         let command_buffer = encoder.finish();
         self.graphics_state
             .queue
-            .submit(std::iter::once(command_buffer));
+            .submit([bitmap_ops, command_buffer]);
 
         surface_texture.present();
     }
@@ -149,10 +166,10 @@ impl Graphics {
 
         let frame_duration = Duration::from_secs_f32(1.0 / self.framerate as f32);
         let now = Instant::now();
-        let time_since = self.last_render.duration_since(now);
+        let time_since = now.duration_since(self.last_render);
 
         let wait_time = frame_duration.saturating_sub(time_since);
-        println!("{frame_duration:?} {time_since:?} {wait_time:?}");
+        println!("frame duration: {frame_duration:?} time since last frame: {time_since:?} wait time: {wait_time:?}");
         std::thread::sleep(wait_time);
 
         self.last_render = Instant::now();

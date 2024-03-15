@@ -31,6 +31,7 @@ pub struct WindowData {
     pub active: bool,
     pub windowskin: Option<Bitmap>,
     pub contents: Option<Bitmap>,
+    pub contents_opacity: u8,
     viewport: Viewport,
     z: Z,
 }
@@ -50,6 +51,7 @@ impl Window {
             active: false,
             windowskin: None,
             contents: None,
+            contents_opacity: 255,
             viewport,
             z,
         };

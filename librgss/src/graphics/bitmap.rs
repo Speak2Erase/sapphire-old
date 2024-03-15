@@ -18,7 +18,7 @@
 use slotmap::Key;
 use wgpu::util::DeviceExt;
 
-use crate::{Arenas, Font, Fonts, Graphics};
+use crate::{Arenas, Font, Fonts, Graphics, Rect};
 
 #[derive(Clone, Copy)]
 pub struct Bitmap {
@@ -91,6 +91,41 @@ impl Bitmap {
         let key = arenas.bitmap.insert(internal);
 
         Self { key }
+    }
+
+    pub fn width(&self, arenas: &Arenas) -> u32 {
+        let internal = arenas.bitmap.get(self.key).unwrap();
+        internal.texture.width()
+    }
+
+    pub fn height(&self, arenas: &Arenas) -> u32 {
+        let internal = arenas.bitmap.get(self.key).unwrap();
+        internal.texture.height()
+    }
+
+    pub fn text_size(&self, arenas: &Arenas, fonts: &mut Fonts, text: &str) -> Rect {
+        let BitmapInternal { font, .. } = arenas.bitmap.get(self.key).unwrap();
+        let Fonts { font_system, .. } = fonts;
+        println!("{text}");
+
+        // FIXME line height is probably wrong
+        let metrics = glyphon::Metrics::new(font.size as f32, font.size as f32);
+        let mut buffer = glyphon::Buffer::new(font_system, metrics);
+        buffer.set_size(font_system, f32::INFINITY, f32::INFINITY);
+        // FIXME font name and attrs
+        let attrs = glyphon::Attrs::new().family(glyphon::Family::SansSerif);
+        buffer.set_text(font_system, text, attrs, glyphon::Shaping::Advanced);
+        buffer.shape_until_scroll(font_system);
+
+        let mut width = 0_f32;
+        let mut height = 0_f32;
+        for run in buffer.layout_runs() {
+            width = width.max(run.line_w);
+            height = height.max(run.line_y);
+            println!("hsdfvmhfsdmghfdhgcsfhgncsdfh {} {}", run.line_w, run.line_y)
+        }
+
+        Rect::new(0, 0, width as u32, height as u32)
     }
 
     pub fn null() -> Self {

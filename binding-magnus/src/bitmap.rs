@@ -19,6 +19,7 @@ use crossbeam::atomic::AtomicCell;
 use magnus::{function, method, typed_data::Obj, Class, Module, Object, TryConvert, Value};
 
 use crate::{
+    data::Rect,
     font::{get_fonts, Font},
     get_arenas,
     graphics::get_graphics,
@@ -88,6 +89,61 @@ impl Bitmap {
         Ok(())
     }
 
+    fn width(&self) -> u32 {
+        let arenas = get_arenas().read();
+        self.0.load().width(&arenas)
+    }
+
+    fn height(&self) -> u32 {
+        let arenas = get_arenas().read();
+        self.0.load().width(&arenas)
+    }
+
+    fn text_size(&self, text: String) -> Rect {
+        let arenas = get_arenas().read();
+        let mut fonts = get_fonts().write();
+        let rect = self.0.load().text_size(&arenas, &mut fonts, &text);
+        Rect::from_val(rect)
+    }
+
+    fn draw_text(&self, args: &[Value]) -> Result<(), magnus::Error> {
+        magnus::scan_args::check_arity(args.len(), 2..=6)?;
+
+        let (rect, str, align) = match *args {
+            [rect, str] => {
+                let rect = <&Rect as TryConvert>::try_convert(rect)?;
+                let str = String::try_convert(str)?;
+                (rect.as_rect(), str, 0)
+            }
+            [rect, str, align] => {
+                let rect = <&Rect as TryConvert>::try_convert(rect)?;
+                let str = String::try_convert(str)?;
+                let align = u8::try_convert(align)?;
+                (rect.as_rect(), str, align)
+            }
+            [x, y, width, height, str] => {
+                let x = i32::try_convert(x)?;
+                let y = i32::try_convert(y)?;
+                let width = u32::try_convert(width)?;
+                let height = u32::try_convert(height)?;
+                let str = String::try_convert(str)?;
+                (librgss::Rect::new(x, y, width, height), str, 0)
+            }
+            [x, y, width, height, str, align] => {
+                let x = i32::try_convert(x)?;
+                let y = i32::try_convert(y)?;
+                let width = u32::try_convert(width)?;
+                let height = u32::try_convert(height)?;
+                let str = String::try_convert(str)?;
+                let align = u8::try_convert(align)?;
+                (librgss::Rect::new(x, y, width, height), str, align)
+            }
+            _ => unimplemented!(), // TODO handle
+        };
+
+        Ok(())
+    }
+
     fn font(rb_self: Obj<Bitmap>) -> Result<magnus::Value, magnus::Error> {
         rb_self.ivar_get("font")
     }
@@ -116,6 +172,12 @@ pub fn bind(ruby: &magnus::Ruby) -> Result<(), magnus::Error> {
 
     class.define_alloc_func::<Bitmap>();
     class.define_method("initialize", method!(Bitmap::initialize, -1))?;
+
+    class.define_method("width", method!(Bitmap::width, 0))?;
+    class.define_method("height", method!(Bitmap::height, 0))?;
+
+    class.define_method("text_size", method!(Bitmap::text_size, 1))?;
+    class.define_method("draw_text", method!(Bitmap::draw_text, -1))?;
 
     class.define_method("font", method!(Bitmap::font, 0))?;
     class.define_method("font=", method!(Bitmap::set_font, 1))?;

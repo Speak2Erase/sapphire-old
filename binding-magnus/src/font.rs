@@ -100,6 +100,11 @@ impl Font {
         rb_self.ivar_get("color")
     }
 
+    fn set_color(&self, color: &Color) {
+        let mut font = self.0.write();
+        font.provide_mut(|f| f.color = color.as_color());
+    }
+
     pub fn from_provider(p: impl Into<BitmapFontProvider>) -> Self {
         let provider = ProviderVal::provider(p);
         Self(RwLock::new(provider))
@@ -235,6 +240,11 @@ pub fn bind(ruby: &magnus::Ruby, fonts: librgss::Fonts) -> Result<(), magnus::Er
 
     class.define_alloc_func::<Font>();
     class.define_method("initialize", method!(Font::initialize, -1))?;
+
+    class.define_method("color", method!(Font::color, 0))?;
+    class.define_method("color=", method!(Font::set_color, 1))?;
+
+    // ----------------------
 
     class.define_singleton_method("default_name", method!(Font::default_name, 0))?;
     class.define_singleton_method("default_name=", method!(Font::set_default_name, 1))?;

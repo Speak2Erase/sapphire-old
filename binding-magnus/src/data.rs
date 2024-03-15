@@ -17,12 +17,13 @@
 
 use crossbeam::atomic::AtomicCell;
 use magnus::{function, method, Class, Module, Object, RString, TryConvert, Value};
+use parking_lot::RwLock;
 
 use crate::helpers::{ColorProvider, Provider, ProviderVal, RectProvider};
 
 #[derive(Default)]
 #[magnus::wrap(class = "Color", size, free_immediately)]
-pub struct Color(pub AtomicCell<ProviderVal<librgss::Color, ColorProvider>>);
+pub struct Color(pub RwLock<ProviderVal<librgss::Color, ColorProvider>>);
 
 impl Color {
     fn initialize(&self, args: &[Value]) -> Result<(), magnus::Error> {
@@ -38,7 +39,7 @@ impl Color {
             alpha: alpha.unwrap_or(255.0),
         };
 
-        let mut provider = self.0.load();
+        let mut provider = self.0.write();
         provider.provide_mut(|c| *c = color);
 
         Ok(())
@@ -54,7 +55,7 @@ impl Color {
     }
 
     fn serialize(color: &Color) -> RString {
-        let provider = color.0.load();
+        let provider = color.0.read();
         let color = provider.provide_copy();
         let bytes = bytemuck::bytes_of(&color);
         RString::from_slice(bytes)
@@ -62,11 +63,11 @@ impl Color {
 
     pub fn from_provider(p: impl Into<ColorProvider>) -> Self {
         let provider = ProviderVal::provider(p);
-        Self(AtomicCell::new(provider))
+        Self(RwLock::new(provider))
     }
 
     pub fn as_color(&self) -> librgss::Color {
-        self.0.load().provide_copy()
+        self.0.read().provide_copy()
     }
 }
 
@@ -110,7 +111,7 @@ impl Tone {
 
 #[derive(Default)]
 #[magnus::wrap(class = "Rect", size, free_immediately, frozen_shareable)]
-pub struct Rect(pub(crate) AtomicCell<ProviderVal<librgss::Rect, RectProvider>>);
+pub struct Rect(pub(crate) RwLock<ProviderVal<librgss::Rect, RectProvider>>);
 
 impl Rect {
     fn initialize(&self, x: i32, y: i32, width: u32, height: u32) {
@@ -118,7 +119,7 @@ impl Rect {
     }
 
     fn set(&self, x: i32, y: i32, width: u32, height: u32) {
-        let mut provider = self.0.load();
+        let mut provider = self.0.write();
         provider.provide_mut(|rect| *rect = librgss::Rect::new(x, y, width, height));
     }
 
@@ -126,13 +127,26 @@ impl Rect {
         self.set(0, 0, 0, 0)
     }
 
+    fn width(&self) -> u32 {
+        self.as_rect().width
+    }
+
+    fn height(&self) -> u32 {
+        self.as_rect().height
+    }
+
     pub fn from_provider(p: impl Into<RectProvider>) -> Self {
         let provider = ProviderVal::provider(p);
-        Self(AtomicCell::new(provider))
+        Self(RwLock::new(provider))
+    }
+
+    pub fn from_val(p: impl Into<librgss::Rect>) -> Self {
+        let provider = ProviderVal::val(p);
+        Self(RwLock::new(provider))
     }
 
     pub fn as_rect(&self) -> librgss::Rect {
-        self.0.load().provide_copy()
+        self.0.read().provide_copy()
     }
 }
 
@@ -285,6 +299,9 @@ pub fn bind(ruby: &magnus::Ruby) -> Result<(), magnus::Error> {
 
     rect.define_alloc_func::<Rect>();
     rect.define_method("initialize", method!(Rect::initialize, 4))?;
+
+    rect.define_method("width", method!(Rect::width, 0))?;
+    rect.define_method("height", method!(Rect::height, 0))?;
 
     rect.define_method("set", method!(Rect::set, 4))?;
     rect.define_method("empty", method!(Rect::empty, 0))?;

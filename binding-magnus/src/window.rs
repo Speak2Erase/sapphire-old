@@ -214,6 +214,21 @@ impl Window {
             }
         }
     }
+
+    fn contents_opacity(&self) -> Result<u8, magnus::Error> {
+        let arenas = get_arenas().read();
+        let window = self.get_data(&arenas)?;
+        Ok(window.contents_opacity)
+    }
+
+    fn set_contents_opacity(&self, opacity: u32) -> Result<(), magnus::Error> {
+        let opacity = opacity.min(255) as u8;
+        let mut arenas = get_arenas().write();
+        let window = self.get_data_mut(&mut arenas)?;
+        window.contents_opacity = opacity;
+
+        Ok(())
+    }
 }
 
 impl Window {
@@ -244,10 +259,12 @@ impl Window {
     }
 }
 
+#[deprecated = "FIXME: stub"]
 fn null_getter(rb_self: magnus::Value) -> magnus::value::Qnil {
     magnus::value::qnil()
 }
 
+#[deprecated = "FIXME: stub"]
 fn null_setter(rb_self: magnus::Value, _: magnus::Value) {}
 
 pub fn bind(ruby: &magnus::Ruby) -> Result<(), magnus::Error> {
@@ -293,6 +310,15 @@ pub fn bind(ruby: &magnus::Ruby) -> Result<(), magnus::Error> {
 
     class.define_method("opacity", method!(null_getter, 0))?;
     class.define_method("opacity=", method!(null_setter, 1))?;
+
+    class.define_method("contents_opacity", method!(Window::contents_opacity, 0))?;
+    class.define_method(
+        "contents_opacity=",
+        method!(Window::set_contents_opacity, 1),
+    )?;
+
+    class.define_method("pause", method!(null_getter, 0))?;
+    class.define_method("pause=", method!(null_setter, 1))?;
 
     Ok(())
 }

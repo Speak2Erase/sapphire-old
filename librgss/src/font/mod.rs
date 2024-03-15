@@ -18,8 +18,8 @@
 use crate::Color;
 
 pub struct Fonts {
-    font_system: glyphon::FontSystem,
-    cache: glyphon::SwashCache,
+    pub(crate) font_system: glyphon::FontSystem,
+    pub(crate) cache: glyphon::SwashCache,
 
     // FIXME this might be shared across fonts?
     pub default: Font,

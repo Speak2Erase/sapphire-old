@@ -41,6 +41,14 @@ fn update() -> Result<(), magnus::Error> {
     }
 }
 
+fn trigger(val: magnus::Value) -> bool {
+    false
+}
+
+fn press(val: magnus::Value) -> bool {
+    false
+}
+
 pub fn bind(ruby: &magnus::Ruby, input: librgss::Input) -> Result<(), magnus::Error> {
     let module = ruby.define_module("Input")?;
 
@@ -51,10 +59,17 @@ pub fn bind(ruby: &magnus::Ruby, input: librgss::Input) -> Result<(), magnus::Er
 
     module.define_module_function("update", function!(update, 0))?;
 
+    module.define_module_function("trigger?", function!(trigger, 1))?;
+    module.define_module_function("press?", function!(press, 1))?;
+
     module.const_set("KEY_M", 0)?;
     module.const_set("KEY_E", 0)?;
     module.const_set("KEY_O", 0)?;
     module.const_set("KEY_W", 0)?;
+
+    module.const_set("ACTION", 0)?;
+    module.const_set("CANCEL", 0)?;
+    module.const_set("R", 0)?;
 
     Ok(())
 }
