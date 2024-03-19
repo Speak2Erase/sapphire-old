@@ -60,7 +60,6 @@ impl Input {
                 _ => {}
             }
         }
-        println!("{:#?}", self.buttons)
     }
 
     /// Notifies the event loop that we'd like to exit.

@@ -67,3 +67,13 @@ impl DrawableRef {
         }
     }
 }
+
+impl<'res> Drawable<'res> {
+    pub fn draw(self, arenas: &'res Arenas, render_pass: &mut wgpu::RenderPass<'res>) {
+        match self {
+            Self::Viewport(v) => v.draw(arenas, render_pass),
+            Self::Window(w) => w.draw(arenas, render_pass),
+            _ => {}
+        }
+    }
+}

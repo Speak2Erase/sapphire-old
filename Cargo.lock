@@ -1126,6 +1126,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "glam"
+version = "0.26.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "bebe52f2c58f1eea4d6fd3307058cf818c74181435a3620502d1651db07ff018"
+dependencies = [
+ "bytemuck",
+]
+
+[[package]]
 name = "glib-sys"
 version = "0.18.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1528,6 +1537,7 @@ dependencies = [
  "color-eyre",
  "crossbeam",
  "enum-map",
+ "glam",
  "glyphon",
  "image",
  "itertools",

@@ -19,6 +19,8 @@ use magnus::{function, Value};
 use parking_lot::RwLock;
 use std::sync::OnceLock;
 
+use crate::get_arenas;
+
 // FIXME find a way around using a static
 pub(crate) static GRAPHICS: OnceLock<RwLock<librgss::Graphics>> = OnceLock::new();
 
@@ -31,7 +33,8 @@ pub fn get_graphics() -> &'static RwLock<librgss::Graphics> {
 
 fn update() {
     let mut graphics = get_graphics().write();
-    graphics.update();
+    let arenas = get_arenas().read();
+    graphics.update(&arenas);
 }
 
 fn fullscreen() -> bool {

@@ -141,3 +141,12 @@ impl Window {
         arenas.window.get_mut(self.key)
     }
 }
+
+impl WindowData {
+    pub(crate) fn draw<'rpass>(
+        &'rpass self,
+        arenas: &'rpass Arenas,
+        render_pass: &mut wgpu::RenderPass<'rpass>,
+    ) {
+    }
+}

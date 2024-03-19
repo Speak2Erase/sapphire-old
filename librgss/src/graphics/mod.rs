@@ -22,7 +22,7 @@ use std::{
 };
 use winit::window::Window as NativeWindow;
 
-use crate::{EventLoop, FileSystem, Rect};
+use crate::{Arenas, EventLoop, FileSystem, Rect};
 
 mod bitmap;
 pub use bitmap::Bitmap;
@@ -54,12 +54,18 @@ pub use window::{Window, WindowData};
 mod z;
 use z::{ZList, Z};
 
+mod render;
+
 pub struct Graphics {
     window: Arc<NativeWindow>,
     filesystem: Arc<FileSystem>,
     last_render: Instant,
     pub framerate: u16,
     pub frame_count: u64,
+
+    pub(crate) bind_groups: render::BindGroups,
+    pub(crate) pipelines: render::RenderPipelines,
+
     pub(crate) graphics_state: GraphicsState,
     pub(crate) global_viewport: Viewport,
     pub(crate) bitmap_ops: wgpu::CommandEncoder,
@@ -71,6 +77,7 @@ pub(crate) struct GraphicsState {
     pub(crate) adapter: wgpu::Adapter,
     pub(crate) device: wgpu::Device,
     pub(crate) queue: wgpu::Queue,
+    pub(crate) surface_config: wgpu::SurfaceConfiguration,
 }
 
 const BITMAP_OPS_DESCRIPTOR: wgpu::CommandEncoderDescriptor<'static> =
@@ -80,7 +87,7 @@ const BITMAP_OPS_DESCRIPTOR: wgpu::CommandEncoderDescriptor<'static> =
 
 impl Graphics {
     pub async fn new(
-        arenas: &mut crate::Arenas,
+        arenas: &mut Arenas,
         event_loop: &EventLoop,
         filesystem: Arc<FileSystem>,
     ) -> color_eyre::Result<Self> {
@@ -91,6 +98,9 @@ impl Graphics {
             .build(&event_loop.event_loop)
             .map(Arc::new)?;
         let graphics_state = GraphicsState::new(window.clone()).await?;
+
+        let bind_groups = render::BindGroups::new(&graphics_state);
+        let pipelines = render::RenderPipelines::new(&graphics_state, &bind_groups);
 
         let global_viewport = ViewportInternal::global();
         let global_viewport = Viewport {
@@ -107,16 +117,20 @@ impl Graphics {
             last_render: Instant::now(),
             framerate: 40,
             frame_count: 0,
+
+            bind_groups,
+            pipelines,
+
             graphics_state,
             global_viewport,
             bitmap_ops,
         };
-        this.render();
+        this.render(arenas);
 
         Ok(this)
     }
 
-    fn render(&mut self) {
+    fn render(&mut self, arenas: &Arenas) {
         let new_bitmap_ops = self
             .graphics_state
             .device
@@ -137,7 +151,7 @@ impl Graphics {
                     label: Some("sapphire main command encoder"),
                 });
 
-        let render_pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
+        let mut render_pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
             label: Some("sapphire main render pass"),
             color_attachments: &[Some(wgpu::RenderPassColorAttachment {
                 view: &surface_view,
@@ -151,6 +165,13 @@ impl Graphics {
             timestamp_writes: None,
             occlusion_query_set: None,
         });
+
+        let viewport = arenas
+            .viewport
+            .get(self.global_viewport.key)
+            .expect(Arenas::VIEWPORT_MISSING);
+        viewport.draw(arenas, &mut render_pass);
+
         drop(render_pass);
 
         let command_buffer = encoder.finish();
@@ -161,8 +182,8 @@ impl Graphics {
         surface_texture.present();
     }
 
-    pub fn update(&mut self) {
-        self.render();
+    pub fn update(&mut self, arenas: &Arenas) {
+        self.render(arenas);
 
         let frame_duration = Duration::from_secs_f32(1.0 / self.framerate as f32);
         let now = Instant::now();
@@ -223,8 +244,11 @@ impl GraphicsState {
             .request_device(
                 &wgpu::DeviceDescriptor {
                     label: Some("librgss device"),
-                    required_features: wgpu::Features::empty(),
-                    required_limits: wgpu::Limits::default(),
+                    required_features: wgpu::Features::PUSH_CONSTANTS,
+                    required_limits: wgpu::Limits {
+                        max_push_constant_size: 128,
+                        ..Default::default()
+                    },
                 },
                 None,
             )
@@ -238,6 +262,7 @@ impl GraphicsState {
             adapter,
             device,
             queue,
+            surface_config,
         })
     }
 }
