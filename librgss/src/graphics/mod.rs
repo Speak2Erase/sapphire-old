@@ -179,6 +179,19 @@ impl Graphics {
     pub fn set_window_title(&self, title: &str) {
         self.window.set_title(title)
     }
+
+    #[cfg(feature = "modshot")]
+    pub fn set_window_icon(&self, path: &str) {
+        let mut file = self.filesystem.read_file(path).unwrap(); // FIXME handle
+
+        let mut buffer = vec![];
+        file.read_to_end(&mut buffer).unwrap();
+
+        let icon = image::load_from_memory(&buffer).unwrap().to_rgba8();
+        let (width, height) = icon.dimensions();
+        let icon = winit::window::Icon::from_rgba(icon.into_vec(), width, height).unwrap();
+        self.window.set_window_icon(Some(icon));
+    }
 }
 
 impl GraphicsState {

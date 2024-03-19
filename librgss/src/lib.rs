@@ -20,7 +20,7 @@ mod graphics;
 pub use graphics::{Bitmap, Graphics, Plane, Sprite, Tilemap, Viewport, Window, WindowData};
 
 mod input;
-pub use input::Input;
+pub use input::{Button, Input, KeyBind, NamedButton};
 
 pub fn join_handle_result_to_eyre<T>(result: std::thread::Result<T>) -> color_eyre::Result<T> {
     result.map_err(|e| {

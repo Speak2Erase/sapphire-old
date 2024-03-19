@@ -15,26 +15,65 @@
 // You should have received a copy of the GNU General Public License
 // along with sapphire.  If not, see <http://www.gnu.org/licenses/>.
 
-use magnus::{method, Module};
+use crossbeam::atomic::AtomicCell;
+use magnus::{method, typed_data::Obj, Class, Module};
+
+use crate::{get_arenas, graphics::get_graphics};
 
 #[magnus::wrap(class = "Viewport", free_immediately, size)]
-#[derive(Clone, Copy)]
-pub struct Viewport(librgss::Viewport);
+pub struct Viewport(AtomicCell<librgss::Viewport>);
 
-impl From<Viewport> for librgss::Viewport {
-    fn from(val: Viewport) -> Self {
-        val.0
+impl Default for Viewport {
+    fn default() -> Self {
+        Self(AtomicCell::new(librgss::Viewport::null()))
+    }
+}
+
+impl From<&Viewport> for librgss::Viewport {
+    fn from(val: &Viewport) -> Self {
+        val.0.load()
     }
 }
 
 impl From<librgss::Viewport> for Viewport {
     fn from(val: librgss::Viewport) -> Self {
-        Viewport(val)
+        Viewport(AtomicCell::new(val))
     }
 }
 
+impl Viewport {
+    fn initialize(
+        rb_self: Obj<Viewport>,
+        x: i32,
+        y: i32,
+        width: u32,
+        height: u32,
+    ) -> Result<(), magnus::Error> {
+        let graphics = get_graphics().read();
+        let mut arenas = get_arenas().write();
+        let viewport = librgss::Viewport::new(&graphics, &mut arenas, x, y, width, height);
+        rb_self.0.store(viewport);
+
+        Ok(())
+    }
+}
+
+#[deprecated = "FIXME: stub"]
+fn null_getter(rb_self: magnus::Value) -> magnus::value::Qnil {
+    magnus::value::qnil()
+}
+
+#[deprecated = "FIXME: stub"]
+fn null_setter(rb_self: magnus::Value, _: magnus::Value) {}
+
 pub fn bind(ruby: &magnus::Ruby) -> Result<(), magnus::Error> {
     let class = ruby.define_class("Viewport", ruby.class_object())?;
+
+    class.define_alloc_func::<Viewport>();
+    class.define_method("initialize", method!(Viewport::initialize, 4))?;
+
+    class.define_method("z", method!(null_getter, 0))?;
+    class.define_method("z=", method!(null_setter, 1))?;
 
     Ok(())
 }

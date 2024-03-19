@@ -25,6 +25,8 @@ arc-swap.workspace = true
 bytemuck.workspace = true
 
 slotmap.workspace = true
+enum-map = "2.7.3"
+maplit = "1.0.2"
 
 [features]
 # FIXME proper tilemap switching

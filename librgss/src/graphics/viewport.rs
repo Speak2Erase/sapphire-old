@@ -15,8 +15,10 @@
 // You should have received a copy of the GNU General Public License
 // along with sapphire.  If not, see <http://www.gnu.org/licenses/>.
 
-use super::{DrawableRef, ZList, Z};
-use crate::Rect;
+use slotmap::Key;
+
+use super::{DrawableRef, Graphics, ZList, Z};
+use crate::{Arenas, Rect};
 
 #[derive(Clone, Copy, PartialEq, Eq)]
 pub struct Viewport {
@@ -32,6 +34,40 @@ pub(crate) struct ViewportInternal {
 
 slotmap::new_key_type! {
   pub(crate) struct ViewportKey;
+}
+
+impl Viewport {
+    pub fn new(
+        graphics: &Graphics,
+        arenas: &mut Arenas,
+        x: i32,
+        y: i32,
+        width: u32,
+        height: u32,
+    ) -> Self {
+        let z = Z::new(0);
+        let internal = ViewportInternal {
+            rect: Rect::new(x, y, width, height),
+            z,
+            z_list: ZList::new(),
+        };
+
+        let key = arenas.viewport.insert(internal);
+
+        let global_viewport = arenas
+            .viewport
+            .get_mut(graphics.global_viewport.key)
+            .expect(Arenas::VIEWPORT_MISSING);
+        global_viewport.z_list.insert(z, DrawableRef::Viewport(key));
+
+        Self { key }
+    }
+
+    pub fn null() -> Self {
+        Self {
+            key: ViewportKey::null(),
+        }
+    }
 }
 
 impl ViewportInternal {

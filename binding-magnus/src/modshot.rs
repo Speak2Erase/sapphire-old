@@ -24,7 +24,10 @@ fn set_title(title: String) {
     graphics.set_window_title(&title);
 }
 
-fn set_icon(icon: String) {}
+fn set_icon(path: String) {
+    let graphics = get_graphics().read();
+    graphics.set_window_icon(&path)
+}
 
 pub fn bind(ruby: &magnus::Ruby) -> Result<(), magnus::Error> {
     let mod_window = ruby.define_module("ModWindow")?;

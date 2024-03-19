@@ -15,11 +15,32 @@
 // You should have received a copy of the GNU General Public License
 // along with sapphire.  If not, see <http://www.gnu.org/licenses/>.
 
-use magnus::{function, Module};
+use magnus::{function, method, Module, Object};
 
-fn set_yes_no(yes: String, no: String) {}
-fn msgbox(kind: u8, text: String) -> bool {
-    false
+fn set_yes_no(module: magnus::RModule, yes: String, no: String) -> Result<(), magnus::Error> {
+    module.ivar_set("yes", yes)?;
+    module.ivar_set("no", no)
+}
+
+fn msgbox(module: magnus::RModule, kind: u8, text: String) -> Result<bool, magnus::Error> {
+    let yes: String = module.ivar_get("yes")?;
+    let no = module.ivar_get("no")?;
+
+    let result = match kind {
+        1 => rfd::MessageDialog::new()
+            .set_description(text)
+            .set_title("Sapphire")
+            .set_level(rfd::MessageLevel::Info)
+            .show(),
+        3 => rfd::MessageDialog::new()
+            .set_description(text)
+            .set_title("Sapphire")
+            .set_buttons(rfd::MessageButtons::OkCancelCustom(yes.clone(), no))
+            .show(),
+        _ => todo!(),
+    };
+
+    Ok(matches!(result, rfd::MessageDialogResult::Custom(yes)))
 }
 
 fn exiting(value: bool) {}
@@ -37,8 +58,11 @@ fn journal_active() -> bool {
 pub fn bind(ruby: &magnus::Ruby) -> Result<(), magnus::Error> {
     let oneshot = ruby.define_module("Oneshot")?;
 
-    oneshot.define_module_function("set_yes_no", function!(set_yes_no, 2))?;
-    oneshot.define_module_function("msgbox", function!(msgbox, 2))?;
+    oneshot.ivar_set("yes", "Yes")?;
+    oneshot.ivar_set("no", "No")?;
+
+    oneshot.define_module_function("set_yes_no", method!(set_yes_no, 2))?;
+    oneshot.define_module_function("msgbox", method!(msgbox, 2))?;
 
     oneshot.define_module_function("exiting", function!(exiting, 1))?;
     oneshot.define_module_function("allow_exit", function!(allow_exit, 1))?;

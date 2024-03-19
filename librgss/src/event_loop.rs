@@ -17,7 +17,7 @@
 
 use crossbeam::channel::{Receiver, Sender};
 
-use winit::event::{Event, WindowEvent};
+use winit::event::Event;
 
 pub struct EventLoop {
     pub(crate) event_loop: winit::event_loop::EventLoop<UserEvent>,
@@ -29,6 +29,7 @@ pub struct Events {
     pub(crate) event_proxy: winit::event_loop::EventLoopProxy<UserEvent>,
 }
 
+#[derive(Clone, Copy)] // Is clone/copy to avoid partially moving in the event loop
 pub(crate) enum UserEvent {
     ExitEventLoop,
 }
@@ -58,24 +59,15 @@ impl EventLoop {
             // rendering is not driven by event loop but is instead driven by Graphics::update, so we only need to wait on events
             target.set_control_flow(winit::event_loop::ControlFlow::Wait);
 
-            match &event {
-                Event::WindowEvent { event, .. } => match event {
-                    WindowEvent::CloseRequested => target.exit(),
-                    WindowEvent::Destroyed => {
-                        eprintln!("warning: window has been destroyed. exiting");
-                        target.exit()
-                    }
-                    _ => {}
-                },
-                Event::UserEvent(event) => match event {
+            // we don't actually need to let the binding know we're about to exit!
+            // winit sends a AboutToExit event which we know is the *last* event emitted.
+            if let Event::UserEvent(event) = event {
+                match event {
                     UserEvent::ExitEventLoop => {
                         eprintln!("event loop exit has been requested, exiting");
                         target.exit()
                     }
-                },
-                // we don't actually need to let the binding know we're about to exit!
-                // winit sends a AboutToExit event which we know is the *last* event emitted.
-                _ => {}
+                }
             }
 
             if self.event_sender.send(event).is_err() && !target.exiting() {

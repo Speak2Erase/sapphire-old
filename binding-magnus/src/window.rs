@@ -66,8 +66,7 @@ impl Window {
 
         let graphics = get_graphics().read();
         let mut arenas = get_arenas().write();
-        let window =
-            librgss::Window::new(&graphics, &mut arenas, viewport.copied().map(Into::into));
+        let window = librgss::Window::new(&graphics, &mut arenas, viewport.map(Into::into));
         rb_self.0.store(window);
 
         let provider = CursorRectProvider(window);

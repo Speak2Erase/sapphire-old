@@ -16,12 +16,15 @@
 // along with Sapphire.  If not, see <http://www.gnu.org/licenses/>.
 
 use std::{
-    sync::mpsc::{Receiver, Sender},
-    sync::Arc,
+    sync::{
+        mpsc::{Receiver, RecvTimeoutError, Sender},
+        Arc,
+    },
     thread::JoinHandle,
 };
 
 use camino::Utf8PathBuf;
+use rodio::{cpal::traits::HostTrait, DeviceTrait};
 
 use crate::FileSystem;
 
@@ -52,34 +55,95 @@ struct PlayArgs {
     volume: u32,
 }
 
+struct AudioState {
+    output_stream: rodio::OutputStream,
+    output_stream_handle: rodio::OutputStreamHandle,
+
+    filesystem: Arc<FileSystem>,
+
+    bgm: Option<Stream>,
+    se_sinks: Vec<rodio::Sink>,
+}
+
+struct Stream {
+    sink: rodio::Sink,
+    path: Utf8PathBuf,
+}
+
 // TODO better error handling in this function
 fn audio_thread_fun(
     receiver: Receiver<Event>,
     filesystem: Arc<FileSystem>,
 ) -> color_eyre::Result<()> {
-    let (output_stream, output_stream_handle) = rodio::OutputStream::try_default()?;
+    // FIXME apparently we can leak output_stream (which is not Send+Sync)
+    let device = rodio::cpal::default_host().default_output_device().unwrap();
+    let device_name = device.name().unwrap();
+    let device_config = device.default_output_config().unwrap();
+    // .supported_output_configs()
+    // .unwrap()
+    // .max_by(|c1, c2| c1.channels().cmp(&c2.channels()))
+    // .unwrap()
+    // .with_max_sample_rate();
 
-    let mut bgm_sink = None;
-    let mut se_sink = None;
+    println!("Using platform default audio device ({device_name})",);
+    println!("Device config: {device_config:#?}",);
+
+    let (output_stream, output_stream_handle) =
+        rodio::OutputStream::try_from_device_config(&device, device_config)?;
+    let mut state = AudioState {
+        output_stream,
+        output_stream_handle,
+        filesystem,
+        bgm: None,
+        se_sinks: Vec::with_capacity(16),
+    };
 
     // TODO extract while loop body into a function to process events
     // TODO gradual event timeout (have infinite timeout when audio processing effects are not required)
-    while let Ok(event) = receiver.recv() {
-        println!("{:?}", event);
-        match event {
-            Event::PlayBGM(args) => {
-                let sink = bgm_sink
-                    .get_or_insert_with(|| rodio::Sink::try_new(&output_stream_handle).unwrap());
-
-                let file = filesystem.read_file(args.path).unwrap();
-                let decoder = rodio::Decoder::new_looped(file).unwrap();
-                sink.append(decoder);
-                sink.set_volume(args.volume as f32 / 100.);
-                sink.set_speed(args.pitch as f32 / 100.);
-
-                sink.play();
+    loop {
+        let result = receiver.recv_timeout(std::time::Duration::from_millis(16));
+        let event = match result {
+            Ok(Event::Exit) | Err(RecvTimeoutError::Disconnected) => break,
+            Err(RecvTimeoutError::Timeout) => {
+                state.handle_timeout();
+                continue;
             }
-            Event::StopBGM => {}
+            Ok(o) => o,
+        };
+
+        println!("{:?}", event);
+        state.process(event);
+    }
+
+    Ok(())
+}
+
+impl AudioState {
+    fn process(&mut self, event: Event) {
+        match event {
+            Event::PlayBGM(args) => match &mut self.bgm {
+                Some(stream) if stream.path == args.path => {
+                    stream.sink.set_volume(args.volume as f32 / 100. * 0.80);
+                    stream.sink.set_speed(args.pitch as f32 / 100.);
+                }
+                _ => {
+                    let sink = rodio::Sink::try_new(&self.output_stream_handle).unwrap();
+
+                    let file = self.filesystem.read_file(&args.path).unwrap();
+                    let decoder = rodio::Decoder::new_looped(file).unwrap();
+                    sink.append(decoder);
+                    sink.set_volume(args.volume as f32 / 100.);
+                    sink.set_speed(args.pitch as f32 / 100.);
+
+                    self.bgm = Some(Stream {
+                        sink,
+                        path: args.path,
+                    })
+                }
+            },
+            Event::StopBGM => {
+                self.bgm = None;
+            }
             Event::FadeBGM(_) => {}
             Event::PlayBGS(_) => {}
             Event::StopBGS => {}
@@ -88,23 +152,24 @@ fn audio_thread_fun(
             Event::StopME => {}
             Event::FadeME(_) => {}
             Event::PlaySE(args) => {
-                let sink = se_sink
-                    .get_or_insert_with(|| rodio::Sink::try_new(&output_stream_handle).unwrap());
+                let sink = rodio::Sink::try_new(&self.output_stream_handle).unwrap();
 
-                let file = filesystem.read_file(args.path).unwrap();
+                let file = self.filesystem.read_file(args.path).unwrap();
                 let decoder = rodio::Decoder::new(file).unwrap();
                 sink.append(decoder);
-                sink.set_volume(args.volume as f32 / 100.);
+                sink.set_volume(args.volume as f32 / 100. * 0.8);
                 sink.set_speed(args.pitch as f32 / 100.);
 
-                sink.play();
+                self.se_sinks.push(sink)
             }
             Event::StopSE => {}
-            Event::Exit => return Ok(()),
+            Event::Exit => {}
         }
     }
 
-    Ok(())
+    fn handle_timeout(&mut self) {
+        self.se_sinks.retain(|s| !s.empty());
+    }
 }
 
 impl Audio {

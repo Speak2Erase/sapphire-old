@@ -42,6 +42,8 @@ fn run() -> color_eyre::Result<()> {
     color_eyre::install()?;
     env_logger::init();
 
+    println!("Sapphire version {}", env!("CARGO_PKG_VERSION"));
+
     let (event_loop, events) = librgss::EventLoop::new()?;
     let input = librgss::Input::new(events);
 

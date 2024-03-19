@@ -15,8 +15,25 @@
 // You should have received a copy of the GNU General Public License
 // along with sapphire.  If not, see <http://www.gnu.org/licenses/>.
 
+use magnus::{function, method, Module};
+
+fn initialize(args: &[magnus::Value]) {}
+
+#[deprecated = "FIXME: stub"]
+fn null_getter(rb_self: magnus::Value) -> magnus::value::Qnil {
+    magnus::value::qnil()
+}
+
+#[deprecated = "FIXME: stub"]
+fn null_setter(rb_self: magnus::Value, _: magnus::Value) {}
+
 pub fn bind(ruby: &magnus::Ruby) -> Result<(), magnus::Error> {
     let class = ruby.define_class("Sprite", ruby.class_object())?;
+
+    class.define_method("initialize", function!(initialize, -1))?;
+
+    class.define_method("bitmap", method!(null_getter, 0))?;
+    class.define_method("bitmap=", method!(null_setter, 1))?;
 
     Ok(())
 }
