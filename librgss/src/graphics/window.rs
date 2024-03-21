@@ -15,9 +15,14 @@
 // You should have received a copy of the GNU General Public License
 // along with sapphire.  If not, see <http://www.gnu.org/licenses/>.
 
+use glam::vec2;
 use slotmap::Key;
+use wgpu::util::DeviceExt;
 
-use super::{DrawableRef, Graphics, Viewport, Z};
+use super::{
+    render::{BindGroupBuilder, Quad, Rect as RRect},
+    DrawableRef, Graphics, GraphicsState, RenderState, Viewport, ViewportInternal, Z,
+};
 use crate::{Arenas, Bitmap, Rect};
 
 #[derive(Clone, Copy)]
@@ -29,11 +34,18 @@ pub struct WindowData {
     pub rect: Rect,
     pub cursor_rect: Rect,
     pub active: bool,
-    pub windowskin: Option<Bitmap>,
-    pub contents: Option<Bitmap>,
     pub contents_opacity: u8,
     viewport: Viewport,
     z: Z,
+
+    vertex_buffer: Option<wgpu::Buffer>,
+    windowskin: Option<Contents>,
+    contents: Option<Contents>,
+}
+
+struct Contents {
+    bitmap: Bitmap,
+    bind_group: wgpu::BindGroup,
 }
 
 slotmap::new_key_type! {
@@ -51,6 +63,7 @@ impl Window {
             active: false,
             windowskin: None,
             contents: None,
+            vertex_buffer: None,
             contents_opacity: 255,
             viewport,
             z,
@@ -133,6 +146,57 @@ impl Window {
         internal.z = new_z;
     }
 
+    pub fn set_windowskin(&self, graphics: &Graphics, arenas: &mut Arenas, bitmap: Option<Bitmap>) {
+        let internal = arenas
+            .window
+            .get_mut(self.key)
+            .expect(Arenas::WINDOW_MISSING);
+
+        let (windowskin, vertex_buffer) = bitmap
+            .map(|bitmap| {
+                let bitmap_internal = arenas.bitmap.get(bitmap.key).unwrap();
+
+                let sampler =
+                    graphics
+                        .graphics_state
+                        .device
+                        .create_sampler(&wgpu::SamplerDescriptor {
+                            label: Some("windowskin sampler"),
+                            ..Default::default()
+                        });
+
+                let bind_group = BindGroupBuilder::new()
+                    .append(wgpu::BindingResource::TextureView(&bitmap_internal.view))
+                    .append(wgpu::BindingResource::Sampler(&sampler))
+                    .build(
+                        &graphics.graphics_state.device,
+                        Some("windowskin bindgroup"),
+                        &graphics.bind_groups.simple,
+                    );
+
+                let quad = Quad {
+                    rect: RRect::from_pos_size(vec2(0.0, 0.0), vec2(192.0, 128.0)),
+                    tex_coords: RRect::from_pos_size(vec2(0.0, 0.0), vec2(192.0, 128.0)),
+                };
+                let quad = quad.norm_tex_coords(bitmap_internal.texture.size());
+
+                let vertices = quad.into_verts();
+                let vertex_buffer = graphics.graphics_state.device.create_buffer_init(
+                    &wgpu::util::BufferInitDescriptor {
+                        label: Some("window vertex buffer"),
+                        contents: bytemuck::cast_slice(&vertices),
+                        usage: wgpu::BufferUsages::VERTEX,
+                    },
+                );
+
+                (Contents { bitmap, bind_group }, vertex_buffer)
+            })
+            .unzip();
+
+        internal.windowskin = windowskin;
+        internal.vertex_buffer = vertex_buffer;
+    }
+
     pub fn get_data<'g>(&self, arenas: &'g Arenas) -> Option<&'g WindowData> {
         arenas.window.get(self.key)
     }
@@ -145,8 +209,36 @@ impl Window {
 impl WindowData {
     pub(crate) fn draw<'rpass>(
         &'rpass self,
-        arenas: &'rpass Arenas,
-        render_pass: &mut wgpu::RenderPass<'rpass>,
+        viewport: &ViewportInternal,
+        render_state: &mut RenderState<'_, 'rpass>,
     ) {
+        let RenderState {
+            pipelines,
+            render_pass,
+            ..
+        } = render_state;
+
+        let Some(vertex_buffer) = &self.vertex_buffer else {
+            return;
+        };
+        let Some(windowskin) = &self.windowskin else {
+            return;
+        };
+
+        render_pass.set_pipeline(&pipelines.simple);
+        render_pass.set_bind_group(0, &windowskin.bind_group, &[]);
+        render_pass.set_vertex_buffer(0, vertex_buffer.slice(..));
+
+        let matrix = glam::Mat4::orthographic_lh(
+            viewport.rect.x as f32,
+            viewport.rect.x as f32 + viewport.rect.width as f32,
+            viewport.rect.y as f32 + viewport.rect.height as f32,
+            viewport.rect.y as f32,
+            0.0,
+            1.0,
+        );
+        render_pass.set_push_constants(wgpu::ShaderStages::VERTEX, 0, bytemuck::bytes_of(&matrix));
+
+        render_pass.draw(0..6, 0..1);
     }
 }

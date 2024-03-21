@@ -16,8 +16,8 @@
 // along with sapphire.  If not, see <http://www.gnu.org/licenses/>.
 
 use super::{
-    PlaneInternal, PlaneKey, SpriteInternal, SpriteKey, TileKey, TilemapInternal, ViewportInternal,
-    ViewportKey, WindowData, WindowKey,
+    GraphicsState, PlaneInternal, PlaneKey, RenderState, SpriteInternal, SpriteKey, TileKey,
+    TilemapInternal, ViewportInternal, ViewportKey, WindowData, WindowKey,
 };
 use crate::Arenas;
 
@@ -69,10 +69,10 @@ impl DrawableRef {
 }
 
 impl<'res> Drawable<'res> {
-    pub fn draw(self, arenas: &'res Arenas, render_pass: &mut wgpu::RenderPass<'res>) {
+    pub fn draw(self, viewport: &ViewportInternal, render_state: &mut RenderState<'_, 'res>) {
         match self {
-            Self::Viewport(v) => v.draw(arenas, render_pass),
-            Self::Window(w) => w.draw(arenas, render_pass),
+            Self::Viewport(v) => v.draw(render_state),
+            Self::Window(w) => w.draw(viewport, render_state),
             _ => {}
         }
     }

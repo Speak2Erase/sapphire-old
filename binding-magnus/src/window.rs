@@ -173,16 +173,17 @@ impl Window {
         bitmap: Option<Obj<Bitmap>>,
     ) -> Result<(), magnus::Error> {
         let ruby = magnus::Ruby::get_with(rb_self);
+        let graphics = get_graphics().read();
         let mut arenas = get_arenas().write();
-        let window = rb_self.get_data_mut(&mut arenas)?;
+        let window = rb_self.0.load();
 
         match bitmap {
             Some(b) => {
-                window.windowskin = Some(b.0.load());
+                window.set_windowskin(&graphics, &mut arenas, Some(b.0.load()));
                 rb_self.ivar_set("windowskin", b)
             }
             None => {
-                window.windowskin = None;
+                window.set_windowskin(&graphics, &mut arenas, None);
                 rb_self.ivar_set("windowskin", ruby.qnil())
             }
         }
@@ -204,11 +205,11 @@ impl Window {
 
         match bitmap {
             Some(b) => {
-                window.contents = Some(b.0.load());
+                // window.contents = Some(b.0.load());
                 rb_self.ivar_set("contents", b)
             }
             None => {
-                window.contents = None;
+                // window.contents = None;
                 rb_self.ivar_set("contents", ruby.qnil())
             }
         }

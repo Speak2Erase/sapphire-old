@@ -80,6 +80,14 @@ pub(crate) struct GraphicsState {
     pub(crate) surface_config: wgpu::SurfaceConfiguration,
 }
 
+pub(crate) struct RenderState<'a, 'rpass> {
+    graphics_state: &'rpass GraphicsState,
+    arenas: &'rpass Arenas,
+    bind_groups: &'rpass render::BindGroups,
+    pipelines: &'rpass render::RenderPipelines,
+    render_pass: &'a mut wgpu::RenderPass<'rpass>,
+}
+
 const BITMAP_OPS_DESCRIPTOR: wgpu::CommandEncoderDescriptor<'static> =
     wgpu::CommandEncoderDescriptor {
         label: Some("bitmap operations (this frame)"),
@@ -166,11 +174,19 @@ impl Graphics {
             occlusion_query_set: None,
         });
 
+        let mut render_state = RenderState {
+            graphics_state: &self.graphics_state,
+            arenas,
+            bind_groups: &self.bind_groups,
+            pipelines: &self.pipelines,
+            render_pass: &mut render_pass,
+        };
+
         let viewport = arenas
             .viewport
             .get(self.global_viewport.key)
             .expect(Arenas::VIEWPORT_MISSING);
-        viewport.draw(arenas, &mut render_pass);
+        viewport.draw(&mut render_state);
 
         drop(render_pass);
 

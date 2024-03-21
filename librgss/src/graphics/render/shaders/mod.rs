@@ -20,11 +20,11 @@ use crate::graphics::GraphicsState;
 mod simple;
 
 pub struct RenderPipelines {
-    simple: wgpu::RenderPipeline,
+    pub simple: wgpu::RenderPipeline,
 }
 
 pub struct BindGroups {
-    simple: wgpu::BindGroupLayout,
+    pub simple: wgpu::BindGroupLayout,
 }
 
 impl BindGroups {

@@ -122,14 +122,14 @@ impl Rect {
     pub fn scale_by(&self, scale: Vec2) -> Self {
         Self {
             position: self.position * scale,
-            size: self.position * scale,
+            size: self.size * scale,
         }
     }
 
     pub fn shrink_by(&self, scale: Vec2) -> Self {
         Self {
             position: self.position / scale,
-            size: self.position / scale,
+            size: self.size / scale,
         }
     }
 }

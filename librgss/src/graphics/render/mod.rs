@@ -16,6 +16,8 @@
 // along with sapphire.  If not, see <https://www.gnu.org/licenses/>.
 
 mod binding_helpers;
+pub use binding_helpers::{BindGroupBuilder, BindGroupLayoutBuilder};
 mod shaders;
 pub use shaders::{BindGroups, RenderPipelines};
 mod primitives;
+pub use primitives::{Quad, Rect, Vertex};

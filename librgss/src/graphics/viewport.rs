@@ -17,7 +17,7 @@
 
 use slotmap::Key;
 
-use super::{drawable::DrawableMut, DrawableRef, Graphics, GraphicsState, ZList, Z};
+use super::{drawable::DrawableMut, DrawableRef, Graphics, GraphicsState, RenderState, ZList, Z};
 use crate::{Arenas, Rect};
 
 #[derive(Clone, Copy, PartialEq, Eq)]
@@ -99,12 +99,8 @@ impl ViewportInternal {
         }
     }
 
-    pub(crate) fn draw<'rpass>(
-        &'rpass self,
-        arenas: &'rpass Arenas,
-        render_pass: &mut wgpu::RenderPass<'rpass>,
-    ) {
-        render_pass.set_viewport(
+    pub(crate) fn draw<'rpass>(&'rpass self, render_state: &mut RenderState<'_, 'rpass>) {
+        render_state.render_pass.set_viewport(
             self.rect.x as f32,
             self.rect.y as f32,
             self.rect.width as f32,
@@ -115,11 +111,11 @@ impl ViewportInternal {
 
         // FIXME do this, but mutably (or add some kind of prepare method)
         for (_, drawable) in self.z_list.iter() {
-            let Some(drawable) = drawable.fetch(arenas) else {
+            let Some(drawable) = drawable.fetch(render_state.arenas) else {
                 continue;
             };
 
-            drawable.draw(arenas, render_pass);
+            drawable.draw(self, render_state);
         }
     }
 }
